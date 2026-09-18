@@ -6,8 +6,7 @@ COPY app/package.json app/pnpm-lock.yaml* ./
 RUN pnpm install --ignore-scripts
 COPY . .
 
-EXPOSE 3000
-CMD ["sleep", "infinity"]
+RUN pnpm build
 
-# -- production 
-# CMD ["pnpm", "dev"]
+EXPOSE 3000
+CMD ["sh", "-c", "npx next start -p ${PORT:-3000}"]
