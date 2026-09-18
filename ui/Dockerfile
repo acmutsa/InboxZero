@@ -4,7 +4,7 @@ WORKDIR /app
 RUN npm install -g pnpm
 COPY app/package.json app/pnpm-lock.yaml* ./
 RUN pnpm install --ignore-scripts
-COPY . .
+COPY app/ .
 
 RUN pnpm build
 
