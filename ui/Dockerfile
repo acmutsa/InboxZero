@@ -9,4 +9,4 @@ COPY app/ .
 RUN pnpm build
 
 EXPOSE 3000
-CMD ["sh", "-c", "npx next start -p ${PORT:-3000}"]
+CMD ["sh", "-c", "pnpm next start -p ${PORT:-3000}"]
