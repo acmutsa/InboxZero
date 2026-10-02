@@ -1,3 +1,4 @@
+import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
 import Grainient from "@/components/Grainient";
 
 export default function Home() {
@@ -9,12 +10,29 @@ export default function Home() {
           <span className="text-sm font-semibold tracking-tight text-white">
             Inbox Zero
           </span>
-          <a
-            href="#"
-            className="rounded-full bg-white px-4 py-2 text-sm font-medium text-[#030711] transition-colors hover:bg-sky-100"
-          >
-            Get started
-          </a>
+          <div className="flex items-center gap-3">
+            <Show when="signed-out">
+              <SignInButton>
+                <button className="rounded-full px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:text-white">
+                  Sign in
+                </button>
+              </SignInButton>
+              <SignUpButton>
+                <button className="rounded-full bg-white px-4 py-2 text-sm font-medium text-[#030711] transition-colors hover:bg-sky-100">
+                  Get started
+                </button>
+              </SignUpButton>
+            </Show>
+            <Show when="signed-in">
+              <a
+                href="/profile"
+                className="rounded-full px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:text-white"
+              >
+                Profile
+              </a>
+              <UserButton />
+            </Show>
+          </div>
         </div>
       </header>
 
