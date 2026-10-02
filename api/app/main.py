@@ -26,9 +26,9 @@ def deleteAccount(account_id: str):
 
 # Stats endpoint
 @app.get("/api/accounts/{account_id}/stats/categories")
-def statsCategories(account_id: str):
+def statsCategories():
     return {"Emails grouped by category": "ok"}
 
 @app.get("/api/accounts/{account_id}/stats/drafts")
-def emailDrafts(account_id: str):
+def emailDrafts():
     return {"Emails needing drafts": "ok"}
