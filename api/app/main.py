@@ -34,6 +34,18 @@ add_cors_middleware(app)
 app.include_router(auth_gmail_router)
 logger = logging.getLogger(__name__)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_settings().cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.add_exception_handler(EmailServiceError, email_service_error_handler)
+app.include_router(gmail_auth_router)
+app.include_router(gmail_router)
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
