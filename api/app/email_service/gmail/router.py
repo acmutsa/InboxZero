@@ -1,11 +1,14 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+import requests
+from fastapi import APIRouter, Depends, HTTPException, status
+from oauthlib.oauth2.rfc6749.errors import InvalidGrantError, OAuth2Error
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.auth.jwt import decode_access_token
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+import app.auth.google_state_jwt as google_state_jwt
+from app.auth.jwt import decode
 from app.db.session import get_db
 
 auth_gmail_router = APIRouter(prefix="/auth/google", tags=["gmail-connect"])
@@ -17,49 +20,72 @@ logger = logging.getLogger(__name__)
     response_model=AuthorizationUrl,
     status_code=status.HTTP_200_OK,
 )
-async def connect_gmail(
+def connect_gmail(
     oauth: OAuth,
-    body: ConnectGmailRequest, 
-    decoded_jwt: DecodedJWT, 
+    body: ConnectGmailRequest , 
+    decoded_jwt: DecodedJWT = Depends(decode), 
 ):
-    pass
+    state = google_state_jwt.encode(decoded_jwt["sub"], body.gmail)
+    url = oauth.get_authorization_url(state=state, gmail=body.gmail)
+    return AuthorizationUrl(
+        url=url
+    )
 
 
 @auth_gmail_router.post(
     "/callback",
     status_code=status.HTTP_200_OK,
 )
-async def callback(
-    oauth: OAuth, 
-    body: CallbackRequest, 
-    decoded_jwt: DecodedJWT, 
-    db: Db
+def callback(
+    oauth: OAuth,
+    body: GmailCallbackRequest,
+    decoded_jwt: DecodedJWT = Depends(decode),
+    db: Session = Depends(get_db)
 ):
-    pass
+    user_id = decoded_jwt["sub"]
+    state = google_state_jwt.decode(body.state, user_id)
 
+    try:
 
-@auth_gmail_router.delete(
-    "/connected-emails/{account_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
-async def disconnect_email(account_id: int, decoded_jwt: DecodedJWT, db: Db):
-    pass
+        credentials = oauth.exchange_code(body.state, body.code)
 
+    except InvalidGrantError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="This sign-in link was already used or expired. Please connect Gmail again.",
+        )
 
-@auth_gmail_router.get(
-    "/status", 
-    response_model=ConnectionStatus
-    )
-def connection_status(
-    user_id: UserId, 
-    oauth: OAuth
-):
-    pass
+    except OAuth2Error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail="Gmail connection isn't available right now. Please try again later.",
+        )
 
+    except requests.RequestException:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="We couldn't reach Google. Please try again.",
+        )
 
-@auth_gmail_router.post(
-    "/logout", 
-    status_code=status.HTTP_204_NO_CONTENT
-)
-def logout(user_id: UserId, oauth: OAuth):
-    pass
+    try:
+        email = oauth.get_verified_email(credentials)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail="We couldn't verify your Google account. Please try again.",
+        )
+
+    if email.lower() != state["gmail"].lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"You signed in as {email}, expected {state['gmail']}"
+        )
+
+    try:
+    # Save to DB, encrypting the refresh token
+    except Exception:
+        except SQLAlchemyError:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save Gmail. Please try again later.",
+            )
+
+    return {
+        "email": email, 
+        "connected": True
+    }

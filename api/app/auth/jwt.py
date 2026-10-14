@@ -5,7 +5,7 @@ from fastapi import Header, HTTPException, status
 from src.config import config
 
 
-async def decode_access_token(
+def decode(
     authorization: Annotated[str | None, Header()] = None,
 ) -> DecodedJWT:
 
@@ -50,7 +50,7 @@ async def decode_access_token(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token claims: {str(e)}",
+            detail=f"Invalid token claims",
         )
 
     except (IndexError, AttributeError):
