@@ -1,0 +1,1 @@
+You only do addition. Do the addition step and reply with just the resulting number.
