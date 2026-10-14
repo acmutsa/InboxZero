@@ -1,24 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 
 from app.email_service.gmail.config import get_settings
 from app.email_service.gmail.auth_router import router as gmail_auth_router
 from app.email_service.gmail.router import email_service_error_handler, router as gmail_router
 from app.email_service.gmail.types.error import EmailServiceError
 
+from src.auth.jwt import decode_access_token
+from src.middleware.cors import add_cors_middleware
+
+from app.gnail.router import router as auth_gmail_router
+
 app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=get_settings().cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.add_exception_handler(EmailServiceError, email_service_error_handler)
-app.include_router(gmail_auth_router)
-app.include_router(gmail_router)
+add_cors_middleware(app)
+app.include_router(auth_gmail_router, prefix="/auth/google")
+logger = logging.getLogger(__name__)
 
 @app.get("/health")
 def health():
