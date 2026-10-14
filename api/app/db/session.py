@@ -1,10 +1,11 @@
-from collections.abc import AsyncIterator
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from collections.abc import Iterator
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 from app.config import config
 
-db_engine = create_async_engine(config.DATABASE_URL, pool_pre_ping=True)
-SessionLocal = async_sessionmaker(bind=db_engine, autoflush=False, expire_on_commit=False)
+db_engine = create_engine(config.POSTGRES_URL, pool_pre_ping=True)
+SessionLocal = sessionmaker(bind=db_engine, autoflush=False, expire_on_commit=False)
 
-async def get_db() -> AsyncIterator[AsyncSession]:
-    async with SessionLocal() as db:
+def get_db() -> Iterator[Session]:
+    with SessionLocal() as db:
         yield db

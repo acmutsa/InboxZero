@@ -1,31 +1,37 @@
-import google.oauth2.credentials
-import google_auth_oauthlib.flow
+from google.auth.transport import requests 
+from google.oauth2 import id_token
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
+
 from app.config import config
-from app.models.connected_email import ConnectedEmail
 
+class GoogleOAuth:
 
-TOKEN_URI = "https://oauth2.googleapis.com/token"
-REVOKE_URI = "https://oauth2.googleapis.com/revoke"
-STATE_TTL_SECONDS = 600
-
-
-class OAuth():
-
-    def _get_flow() -> Flow:
-        return Flow.from_client_secrets_file(
+    def _get_flow(self, state: str) -> Flow:
+        flow = Flow.from_client_config(
             config.get_google_client_config,
-            scopes=config.get_scopes,
+            scopes=config.SCOPES, 
             redirect_uri=config.GOOGLE_REDIRECT_URI,
+            state=state,
             autogenerate_code_verifier=False,
         )
+        return flow
 
-    def get_authorization_url(clerk_id: str, gmail: str) -> str:
-        authorization_url, state = _get_flow().authorization_url(
+    def get_authorization_url(self, state: str, gmail: str) -> str:
+        url, _ = self._get_flow(state).authorization_url(
             access_type="offline",
             login_hint=gmail,
             prompt="consent", 
         )
-        return authorization_url
+        return url
 
+    def exchange_code(self, state: str, code: str) -> Credentials:
+        flow = self._get_flow(state)
+        flow.fetch_token(code=code)
+        return flow.credentials
 
-    
+    def get_verified_email(self, credentials: Credentials) -> str:
+        info = id_token.verify_oauth2_token(
+            credentials.id_token, requests.Request(), config.GOOGLE_CLIENT_ID
+        )
+        return info["email"]
