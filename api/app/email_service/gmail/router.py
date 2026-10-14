@@ -1,15 +1,28 @@
 import logging
-from typing import Annotated
-
 import requests
-from fastapi import APIRouter, Depends, HTTPException, status
-from oauthlib.oauth2.rfc6749.errors import InvalidGrantError, OAuth2Error
-from pydantic import BaseModel
+
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import status
+
+from oauthlib.oauth2.rfc6749.errors import OAuth2Error
+from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
+
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-import app.auth.google_state_jwt as google_state_jwt
+
+from app.models.autorization_url import AuthorizationUrl
+from app.models.connect_gmail_request import ConnectGmailRequest
+from app.models.decoded_jwt import DecodedJWT
+from app.models.gmail_callback_request import GmailCallbackRequest
+
+from app.auth import google_state_jwt
 from app.auth.jwt import decode
+
 from app.db.session import get_db
+
+from app.email_service.gmail.oauth import GoogleOAuth
 
 auth_gmail_router = APIRouter(prefix="/auth/google", tags=["gmail-connect"])
 logger = logging.getLogger(__name__)
@@ -21,28 +34,27 @@ logger = logging.getLogger(__name__)
     status_code=status.HTTP_200_OK,
 )
 def connect_gmail(
-    oauth: OAuth,
-    body: ConnectGmailRequest , 
-    decoded_jwt: DecodedJWT = Depends(decode), 
+    body: ConnectGmailRequest,
+    decoded_jwt: DecodedJWT = Depends(decode),
+    oauth: GoogleOAuth = Depends(GoogleOAuth),
 ):
-    state = google_state_jwt.encode(decoded_jwt["sub"], body.gmail)
+    state = google_state_jwt.encode(decoded_jwt.user_id, body.gmail)
     url = oauth.get_authorization_url(state=state, gmail=body.gmail)
     return AuthorizationUrl(
-        url=url
+        authorization_url=url
     )
-
 
 @auth_gmail_router.post(
     "/callback",
     status_code=status.HTTP_200_OK,
 )
 def callback(
-    oauth: OAuth,
     body: GmailCallbackRequest,
     decoded_jwt: DecodedJWT = Depends(decode),
+    oauth: GoogleOAuth = Depends(GoogleOAuth),
     db: Session = Depends(get_db)
 ):
-    user_id = decoded_jwt["sub"]
+    user_id = decoded_jwt.user_id
     state = google_state_jwt.decode(body.state, user_id)
 
     try:
@@ -71,19 +83,20 @@ def callback(
             status_code=status.HTTP_502_BAD_GATEWAY, detail="We couldn't verify your Google account. Please try again.",
         )
 
-    if email.lower() != state["gmail"].lower():
+    if email.lower() != state.gmail.lower():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=f"You signed in as {email}, expected {state['gmail']}"
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"You signed in as {email}, expected {state.gmail}"
         )
 
-    try:
+    # try:
+    #     pass
     # Save to DB, encrypting the refresh token
-    except Exception:
-        except SQLAlchemyError:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save Gmail. Please try again later.",
-            )
+    # except Exception:
+    #     except SQLAlchemyError:
+    #         db.rollback()
+    #         raise HTTPException(
+    #             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save Gmail. Please try again later.",
+    #         )
 
     return {
         "email": email, 

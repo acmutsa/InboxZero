@@ -1,8 +1,15 @@
-from typing import Annotated, Any
 import jwt
-from src.models.decoded_jwt import DecodedJWT
-from fastapi import Header, HTTPException, status
-from src.config import config
+
+from typing import Annotated
+from typing import Any
+
+from fastapi import Header
+from fastapi import HTTPException
+from fastapi import status
+
+from app.models.decoded_jwt import DecodedJWT
+
+from app.config import config
 
 
 def decode(
@@ -35,7 +42,7 @@ def decode(
         if not isinstance(user_id, str):
             raise ValueError("JWT claim 'sub' must be a string")
 
-        return {"user_id": user_id}
+        return DecodedJWT(user_id=user_id)
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(

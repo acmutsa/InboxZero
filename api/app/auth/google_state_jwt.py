@@ -1,7 +1,16 @@
+import secrets
+import time
 import jwt
-from src.models.decoded_google_state import DecodedGoogleState
-from fastapi import HTTPException, status
-from src.config import config
+
+from typing import Any
+
+from fastapi import HTTPException
+from fastapi import status
+
+from app.models.decoded_google_state import DecodedGoogleState
+
+from app.config import config
+
 
 def encode(user_id: str, gmail: str) -> str:
 
@@ -55,4 +64,4 @@ def decode(
             status_code=status.HTTP_403_FORBIDDEN, detail="State does not belong to this user",
         )
 
-    return payload
+    return DecodedGoogleState(**payload)

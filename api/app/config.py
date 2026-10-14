@@ -1,7 +1,14 @@
 from pathlib import Path
+
 from typing import Annotated
-from pydantic import AfterValidator, Field, HttpUrl, PostgresDsn, RedisDsn
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from pydantic import AfterValidator
+from pydantic import Field
+from pydantic import HttpUrl
+from pydantic import PostgresDsn
+from pydantic import RedisDsn
+from pydantic_settings import BaseSettings
+from pydantic_settings import SettingsConfigDict
 
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 

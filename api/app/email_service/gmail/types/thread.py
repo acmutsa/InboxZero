@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel
 
-from .message import MessageResponse
+from types.message import MessageResponse
 
 class ThreadResponse(BaseModel):
     id: str
