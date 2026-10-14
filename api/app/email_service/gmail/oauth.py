@@ -5,6 +5,7 @@ from google_auth_oauthlib.flow import Flow
 
 from app.config import config
 
+class GoogleOAuth:
 
 class GoogleOAuth:
 
