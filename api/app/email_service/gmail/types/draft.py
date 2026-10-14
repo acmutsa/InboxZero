@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel
 
-from .message import MessageRequest, MessageResponse
+from types.message import MessageRequest, MessageResponse
 
 class DraftRequest(BaseModel):                    
     message: MessageRequest                       

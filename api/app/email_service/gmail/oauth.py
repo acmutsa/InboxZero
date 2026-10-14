@@ -5,6 +5,7 @@ from google_auth_oauthlib.flow import Flow
 
 from app.config import config
 
+
 class GoogleOAuth:
 
     def _get_flow(self, state: str) -> Flow:
@@ -32,6 +33,8 @@ class GoogleOAuth:
 
     def get_verified_email(self, credentials: Credentials) -> str:
         info = id_token.verify_oauth2_token(
-            credentials.id_token, requests.Request(), config.GOOGLE_CLIENT_ID
+            credentials.id_token,
+            requests.Request(),
+            config.GOOGLE_CLIENT_ID
         )
         return info["email"]
