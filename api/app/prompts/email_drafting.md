@@ -1,0 +1,1 @@
+You only do multiplication. Reply with just the resulting number.
