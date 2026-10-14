@@ -1,27 +1,65 @@
-# Base URL: https://gmail.googleapis.com/gmail/v1/users/me
+import logging
+from typing import Annotated
 
-# GET	/labels	List all labels, both system and user
-# GET	/labels/{id}	Get one label, including message and unread counts
-# POST	/labels	Create a label
-# DELETE	/labels/{id}	Delete a label and remove it from all messages
+from fastapi import APIRouter, Depends, status
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
-# POST	/messages/{id}/modify	Add or remove labels on one message
-# POST	/threads/{id}/modify	Add or remove labels on every message in a thread
-# GET	/messages?labelIds=X	List the messages that have a given label"""HTTP endpoints the frontend uses to connect Gmail and work with email."""
+from app.auth.jwt import decode_access_token
+from app.db.session import get_db
+
+auth_gmail_router = APIRouter(prefix="/auth/google", tags=["gmail-connect"])
+logger = logging.getLogger(__name__)
 
 
-# Base URL: https://gmail.googleapis.com/gmail/v1/users/me
-# GET	/drafts	List drafts (IDs only)
-# GET	/drafts/{id}?format=full	Get one draft with its message
-# POST	/drafts	Create a draft
+@auth_gmail_router.post(
+    "/connect-gmail",
+    response_model=AuthorizationUrl,
+    status_code=status.HTTP_200_OK,
+)
+async def connect_gmail(
+    oauth: OAuth,
+    body: ConnectGmailRequest, 
+    decoded_jwt: DecodedJWT, 
+):
+    pass
 
-# Base URL: https://gmail.googleapis.com/gmail/v1/users/me
-# GET	/profile	Account email, total messages and threads, current historyId
 
-# Base URL: https://gmail.googleapis.com/gmail/v1/users/me/messages
+@auth_gmail_router.post(
+    "/callback",
+    status_code=status.HTTP_200_OK,
+)
+async def callback(
+    oauth: OAuth, 
+    body: CallbackRequest, 
+    decoded_jwt: DecodedJWT, 
+    db: Db
+):
+    pass
 
-# GET	/messages	List message IDs (with q, labelIds, and pagination, as covered in the inbox answer)
-# GET	/messages/{id}?format=...	Get one message
-# POST	/messages/send	Send a new email directly, without a draft
-# POST	/messages/{id}/modify	Add or remove labels (read/unread, archive, star)
 
+@auth_gmail_router.delete(
+    "/connected-emails/{account_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def disconnect_email(account_id: int, decoded_jwt: DecodedJWT, db: Db):
+    pass
+
+
+@auth_gmail_router.get(
+    "/status", 
+    response_model=ConnectionStatus
+    )
+def connection_status(
+    user_id: UserId, 
+    oauth: OAuth
+):
+    pass
+
+
+@auth_gmail_router.post(
+    "/logout", 
+    status_code=status.HTTP_204_NO_CONTENT
+)
+def logout(user_id: UserId, oauth: OAuth):
+    pass
