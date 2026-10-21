@@ -141,5 +141,5 @@ class Subscription(Base):
     tier: Mapped[SubscriptionTier] = mapped_column(subscription_tier, nullable=False, server_default=text("'free'"))
     setting_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("settings.id", deferrable=True, initially="IMMEDIATE"), unique=True, nullable=False)
     expiration: Mapped[date | None] = mapped_column(Date)
-    
+
     setting: Mapped[Settings] = relationship(back_populates="subscription")
