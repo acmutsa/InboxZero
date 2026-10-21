@@ -178,7 +178,7 @@ export default function Grainient({
 }: GrainientProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Effect 1: build the WebGL context once, pause when offscreen / tab hidden.
+  // Build once; pause offscreen, in hidden tabs, or when reduced motion is requested.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -250,6 +250,7 @@ export default function Grainient({
     let raf = 0;
     let isVisible = true;
     let isPageVisible = !document.hidden;
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
     const t0 = performance.now();
 
     const loop = (t: number) => {
@@ -259,7 +260,7 @@ export default function Grainient({
     };
 
     const tryStart = () => {
-      if (isVisible && isPageVisible && raf === 0) raf = requestAnimationFrame(loop);
+      if (isVisible && isPageVisible && !motionPreference.matches && raf === 0) raf = requestAnimationFrame(loop);
     };
     const tryStop = () => {
       if (raf !== 0) {
@@ -271,7 +272,8 @@ export default function Grainient({
     const io = new IntersectionObserver(
       ([entry]) => {
         isVisible = entry.isIntersecting;
-        isVisible ? tryStart() : tryStop();
+        if (isVisible) tryStart();
+        else tryStop();
       },
       { threshold: 0 }
     );
@@ -279,9 +281,15 @@ export default function Grainient({
 
     const onVisibility = () => {
       isPageVisible = !document.hidden;
-      isPageVisible ? tryStart() : tryStop();
+      if (isPageVisible) tryStart();
+      else tryStop();
     };
     document.addEventListener("visibilitychange", onVisibility);
+    const onMotionPreference = () => {
+      if (motionPreference.matches) tryStop();
+      else tryStart();
+    };
+    motionPreference.addEventListener('change', onMotionPreference);
 
     tryStart();
 
@@ -290,7 +298,10 @@ export default function Grainient({
       ro.disconnect();
       io.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
+      motionPreference.removeEventListener('change', onMotionPreference);
       ctxMap.delete(container);
+      geometry.remove();
+      program.remove();
       try {
         container.removeChild(canvas);
       } catch {
@@ -329,6 +340,8 @@ export default function Grainient({
     u.uColor2.value = new Float32Array(hexToRgb(color2));
     u.uColor3.value = new Float32Array(hexToRgb(color3));
     u.uLightMode.value = lightMode ? 1.0 : 0.0;
+    // Render updated colors even when the animation is paused.
+    ctx.renderer.render({ scene: ctx.mesh });
   }, [
     timeSpeed,
     colorBalance,
