@@ -5,6 +5,7 @@ from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import status
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from sqlalchemy.exc import IntegrityError
@@ -30,11 +31,36 @@ from app.repositories.user import delete_user
 from app.repositories.user import update_user
 from app.repositories.user import user_find_one_by_clerk_id
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+from arq import create_pool
+from pydantic import BaseModel
+from app.queue.redis import get_redis_settings
+
+
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    redis = await create_pool(get_redis_settings())
+    app.state.redis = redis
+
+    logger.info("Connected to Redis")
+
+    try:
+        yield
+    finally:
+        await redis.aclose()
+        logger.info("Disconnected from Redis")
+
+
+app = FastAPI(lifespan=lifespan)
 add_cors_middleware(app)
 app.include_router(auth_gmail_router)
+<<<<<<< HEAD
 app.include_router(webhook_gmail_router)
 logger = logging.getLogger(__name__)
+=======
+>>>>>>> bcf565e (Implement ARQ queue with retries and dead-letter handling)
 
 app.add_middleware(
     CORSMiddleware,
@@ -119,6 +145,7 @@ def update_user_endpoint(
     try:
         user = user_find_one_by_clerk_id(db, decoded_jwt.user_id)
 
+<<<<<<< HEAD
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
@@ -126,6 +153,99 @@ def update_user_endpoint(
         
         user = update_user(db, user, body.first_name, body.last_name)
         db.commit()
+=======
+
+class TestJobRequest(BaseModel):
+    name: str
+
+class IdempotencyTestRequest(BaseModel):
+    message_id: str
+    name: str
+
+@app.post("/api/queue/test")
+async def enqueue_test_job(payload: TestJobRequest, request: Request):
+    job = await request.app.state.redis.enqueue_job(
+        "test_job",
+        payload.name
+    )
+
+    if job is None:
+        return {"status": "already_enqueued"}
+
+    return {
+        "status": "enqueued",
+        "job_id": job.job_id
+    }
+
+@app.post("/api/queue/retry-test")
+async def enqueue_retry_test(payload: TestJobRequest, request: Request):
+    job = await request.app.state.redis.enqueue_job(
+        "retry_test_job",
+        payload.name
+    )
+
+    if job is None:
+        return {"status": "already_enqueued"}
+
+    return {
+        "status": "enqueued",
+        "job_id": job.job_id
+    }
+
+@app.post("/api/queue/idempotency-test")
+async def enqueue_idempotency_test(
+    payload: IdempotencyTestRequest,
+    request: Request
+):
+    job_id = f"email:{payload.message_id}"
+    
+    job = await request.app.state.redis.enqueue_job(
+        "retry_test_job",
+        payload.name,
+        _job_id=job_id
+    )
+
+    if job is None:
+        return {
+            "status": "already_enqueued",
+            "job_id": job_id
+        }
+
+    return {
+        "status": "enqueued",
+        "job_id": job.job_id
+    }
+
+
+@app.post("/api/queue/dead-letter-test")
+async def enqueue_dead_letter_test(
+    payload: TestJobRequest,
+    request: Request
+):
+    job = await request.app.state.redis.enqueue_job(
+        "dead_letter_test_job",
+        payload.name
+    )
+
+    if job is None:
+        return {"status": "already_enqueued"}
+
+    return {
+        "status": "enqueued",
+        "job_id": job.job_id
+    }
+
+# @app.delete(
+#     "/disconnect-gmail/{user_id}",
+#     status_code=status.HTTP_204_NO_CONTENT,
+# )
+# def disconnect_email(
+#     user_id: int,
+#     decoded_jwt: DecodedJWT = Depends(decode),
+#     db: Session = Depends(get_db)
+# ):
+#     user_id = decoded_jwt.user_id
+>>>>>>> bcf565e (Implement ARQ queue with retries and dead-letter handling)
 
     except SQLAlchemyError:
         db.rollback()
