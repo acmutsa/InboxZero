@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from app.queue.redis import get_redis_settings
 from arq import Retry
+from app.workflows.email_processing import process_email
 
 async def test_job(ctx, name: str):
     print(f"Processing job for: {name}")
@@ -12,60 +13,47 @@ async def test_job(ctx, name: str):
         "name": name
     }
 
-async def retry_test_job(ctx, name: str):
-    job_try = ctx["job_try"]
+async def process_email_job(ctx, account_id: str, message_id: str):
 
-    print(f"Attempt {job_try} for: {name}")
+    try:
+        result = await process_email(account_id, message_id)
 
-    if job_try < 3:
-        delay = 2 ** (job_try - 1)
-        print(f"Job failed. Retrying in {delay} seconds...")
-        raise Retry(defer=delay)
+        return {
+            "status": "completed",
+            "account_id": account_id,
+            "message_id": message_id,
+            "result": result
+        }
 
-    print(f"Successfully processed: {name}")\
+    except Exception as e:
+        job_try = ctx["job_try"]
 
-    return {
-        "status": "completed",
-        "name": name,
-        "attempts": job_try
-    }
+        if job_try < 3:
+            delay = 2 ** (job_try - 1)
+            print(f"Email processing failed. Retrying in {delay} seconds...")
+            raise Retry(defer=delay)
 
-async def dead_letter_test_job(ctx, name: str):
-    job_try = ctx["job_try"]
+        dead_letter = {
+            "job_id": ctx["job_id"],
+            "job_name": "process_email_job",
+            "account_id": account_id,
+            "message_id": message_id,
+            "attempts": job_try,
+            "error": str(e),
+            "failed_at": datetime.now(timezone.utc).isoformat()
+        }
 
-    print(f"Dead-letter test: attempt {job_try} for {name}")
+        await ctx["redis"].lpush(
+            "inboxzero:dead_letters",
+            json.dumps(dead_letter)
+        )
 
-    error = "Simulated permanent processing failure"
+        print(f"Email moved to dead-letter list: {ctx['job_id']}")
 
-    if job_try < 3:
-        delay = 2 ** (job_try - 1)
-        print(f"Job failed. Retrying in {delay} seconds...")
-        raise Retry(defer=delay)
-
-    dead_letter = {
-        "job_id": ctx["job_id"],
-        "job_name": "dead_letter_test_job",
-        "name": name,
-        "attempts": job_try,
-        "error": error,
-        "failed_at": datetime.now(timezone.utc).isoformat()
-    }
-
-    await ctx["redis"].lpush(
-        "inboxzero:dead_letters",
-        json.dumps(dead_letter)
-    )
-
-    print(f"Job moved to dead-letter handling: {ctx['job_id']}")
-
-    raise RuntimeError(error)
+        raise
 
 class WorkerSettings:
-    functions = [
-        test_job,
-        retry_test_job,
-        dead_letter_test_job
-    ]
+    functions = [test_job, process_email_job]
     
     redis_settings = get_redis_settings()
     max_tries = 3
