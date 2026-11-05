@@ -45,3 +45,4 @@ pydantic-settings==2.14.1
 SQLAlchemy==2.1.4
 PyJWT==2.12.1
 pytest==9.0.3
+
