@@ -1,6 +1,8 @@
 import logging
 import requests
 
+from datetime import timezone
+
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
@@ -9,6 +11,7 @@ from fastapi import status
 from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -20,9 +23,15 @@ from app.models.gmail_callback_request import GmailCallbackRequest
 from app.auth import google_state_jwt
 from app.auth.jwt import decode
 
+from app.db.schema import EmailServiceProvider
 from app.db.session import get_db
 
 from app.email_service.gmail.oauth import GoogleOAuth
+
+from app.repositories.email_account import create_email_account
+from app.repositories.email_account import get_email_account
+from app.repositories.email_account_token import create_tokens
+from app.repositories.user import get_user_by_clerk_id
 
 auth_gmail_router = APIRouter(prefix="/auth/google", tags=["gmail-connect"])
 logger = logging.getLogger(__name__)
@@ -40,6 +49,7 @@ def connect_gmail(
 ):
     state = google_state_jwt.encode(decoded_jwt.user_id, body.gmail)
     url = oauth.get_authorization_url(state=state, gmail=body.gmail)
+
     return AuthorizationUrl(
         authorization_url=url
     )
@@ -58,7 +68,6 @@ def callback(
     state = google_state_jwt.decode(body.state, user_id)
 
     try:
-
         credentials = oauth.exchange_code(body.state, body.code)
 
     except InvalidGrantError:
@@ -78,6 +87,7 @@ def callback(
 
     try:
         email = oauth.get_verified_email(credentials)
+
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail="We couldn't verify your Google account. Please try again.",
@@ -88,15 +98,43 @@ def callback(
             status_code=status.HTTP_400_BAD_REQUEST, detail=f"You signed in as {email}, expected {state.gmail}"
         )
 
-    # try:
-    #     pass
-    # Save to DB, encrypting the refresh token
-    # except Exception:
-    #     except SQLAlchemyError:
-    #         db.rollback()
-    #         raise HTTPException(
-    #             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save Gmail. Please try again later.",
-    #         )
+    if not credentials.refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail="Google didn't grant offline access. Please connect Gmail again.",
+        )
+
+    expires_at = credentials.expiry.replace(tzinfo=timezone.utc) if credentials.expiry else None
+
+    try:
+        user = get_user_by_clerk_id(db, user_id)
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
+            )
+        
+        email_account = get_email_account(db, email) 
+
+        if email_account is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="This Gmail account is already connected.",
+            )
+
+        account = create_email_account(db, user, email, EmailServiceProvider.gmail)
+        create_tokens(db, account, credentials.token, credentials.refresh_token, expires_at)
+        db.commit()
+
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="This Gmail account is already connected.",
+        )
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save Gmail. Please try again later.",
+        )
 
     return {
         "email": email, 
