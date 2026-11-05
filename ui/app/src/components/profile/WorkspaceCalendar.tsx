@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -15,13 +14,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 type CalendarEvent = {
   id: number;
@@ -80,11 +72,8 @@ export default function WorkspaceCalendar() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [date, setDate] = useState(previewToday);
   const [view, setView] = useState('Week');
-  const [events, setEvents] = useState(sampleEvents);
   const [hidden, setHidden] = useState<string[]>([]);
-  const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
-  const [calendar, setCalendar] = useState('Personal');
   const weekStart = addDays(date, -date.getDay());
   const days =
     view === 'Day'
@@ -103,7 +92,7 @@ export default function WorkspaceCalendar() {
     },
     (_, i) => addDays(monthStart, i - monthStart.getDay()),
   );
-  const visibleEvents = events.filter(
+  const visibleEvents = sampleEvents.filter(
     (event) => !hidden.includes(event.calendar),
   );
   const title =
@@ -169,10 +158,6 @@ export default function WorkspaceCalendar() {
           <h2>My Calendar</h2>
           <p>A little space for everything on your schedule.</p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus aria-hidden="true" />
-          Add event
-        </Button>
       </div>
       <div className="calendar-layout">
         <aside className="calendar-sidebar">
@@ -349,85 +334,6 @@ export default function WorkspaceCalendar() {
           </div>
         </div>
       </div>
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="preview-dialog">
-          <DialogTitle>Add an event</DialogTitle>
-          <DialogDescription>
-            Create an event in your preview calendar.
-          </DialogDescription>
-          <form
-            className="form-stack"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const values = new FormData(e.currentTarget);
-              setEvents((previous) => [
-                ...previous,
-                {
-                  id: Date.now(),
-                  title: String(values.get('title')).trim(),
-                  date: String(values.get('date')),
-                  time: String(values.get('time')),
-                  calendar,
-                  duration: 30,
-                },
-              ]);
-              setDate(new Date(`${values.get('date')}T12:00:00`));
-              setAddOpen(false);
-            }}
-          >
-            <div className="form-field">
-              <Label htmlFor="event-title">Title</Label>
-              <Input
-                id="event-title"
-                name="title"
-                required
-                pattern=".*\S.*"
-                placeholder="Project planning"
-              />
-            </div>
-            <div className="form-field">
-              <Label htmlFor="event-date">Date</Label>
-              <Input
-                id="event-date"
-                type="date"
-                name="date"
-                required
-                defaultValue={dateKey(date)}
-              />
-            </div>
-            <div className="form-field">
-              <Label htmlFor="event-time">Time</Label>
-              <Input
-                id="event-time"
-                type="time"
-                name="time"
-                required
-                defaultValue="16:00"
-              />
-            </div>
-            <div className="form-field">
-              <Label htmlFor="event-calendar">Calendar</Label>
-              <Select value={calendar} onValueChange={setCalendar}>
-                <SelectTrigger id="event-calendar">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Personal">Personal · Gmail</SelectItem>
-                  <SelectItem value="Work · Studio">Work · Studio</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit">Save event</Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setAddOpen(false)}
-            >
-              Cancel
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
       <Dialog
         open={selected !== null}
         onOpenChange={(open) => {
