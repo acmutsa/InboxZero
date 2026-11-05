@@ -59,9 +59,9 @@ export default function Home() {
             Your AI assistant sorts email, drafts responses, and checks your
             calendar.
           </p>
-          <Button variant="secondary" asChild className="explore">
-            <a href="#about">Explore how it works ↓</a>
-          </Button>
+          <a href="#about" className="explore">
+            Explore how it works ↓
+          </a>
           <small>
             Review every reply. Nothing sends without your approval.
           </small>
@@ -72,7 +72,6 @@ export default function Home() {
         eyebrow="01 / ABOUT"
         title="What is Inbox Zero?"
         description="Email should move your day forward, not take it over. Inbox Zero turns a constant stream of messages into a simple flow: sorted, drafted, and ready for your decision."
-        className="landing-section"
       >
         <Card className="steps glass-surface">
           {steps.map(([title, copy]) => (
@@ -88,7 +87,7 @@ export default function Home() {
         eyebrow="02 / SERVICES"
         title="What Inbox Zero does."
         description="From the first incoming message to the final reply."
-        className="landing-section services"
+        className="services"
       >
         <div className="service-grid">
           {services.map(([label, title, copy]) => (

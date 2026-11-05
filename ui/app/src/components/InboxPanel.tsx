@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { sampleAccounts, type PreviewAccount } from '@/lib/preview-accounts';
-import ComposeEmail, { type ComposedEmail } from '@/components/ComposeEmail';
 import CalendarSkeleton from '@/components/profile/CalendarSkeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -155,27 +154,28 @@ export default function InboxPanel({
     setCheckedIds([]);
   }
 
-  function sendPreview(email: ComposedEmail) {
-    setSentMessages((previous) => [
-      {
-        id: `sent-${Date.now()}`,
-        sender: email.to,
-        email: email.to,
-        subject: email.subject,
-        body: email.body,
-        reply: '',
-        from: email.from,
-        provider: email.provider,
-        status: `${email.provider} · Sent preview`,
-      },
-      ...previous,
-    ]);
-    setNotice('Message added to Sent in this preview. No email was sent.');
-    setSelected(null);
-    setTab('sent');
-    setQuery('');
-    setProvider('all');
-    setCheckedIds([]);
+  function approveReply(message: Message) {
+    if (!approved.includes(message.id)) {
+      setApproved((previous) => [...previous, message.id]);
+      setSentMessages((previous) => [
+        {
+          ...message,
+          id: `sent-${message.id}`,
+          subject: `Re: ${message.subject}`,
+          body: reply,
+          reply: '',
+          from:
+            accounts.find(
+              (account) =>
+                account.connected && account.provider === message.provider,
+            )?.email ?? message.provider,
+          status: `${message.provider} · Approved preview`,
+        },
+        ...previous,
+      ]);
+    }
+    setNotice('Reply approved in this preview. No email was sent.');
+    closeMessage();
   }
 
   function openMessage(message: Message) {
@@ -288,19 +288,7 @@ export default function InboxPanel({
             </Button>
           ) : (
             <>
-              <Button
-                onClick={() => {
-                  setApproved((previous) =>
-                    previous.includes(selected.id)
-                      ? previous
-                      : [...previous, selected.id],
-                  );
-                  setNotice(
-                    'Reply approved in this preview. No email was sent.',
-                  );
-                  closeMessage();
-                }}
-              >
+              <Button onClick={() => approveReply(selected)}>
                 Approve and send
               </Button>
               <Button variant="outline" onClick={() => setEditing(true)}>
@@ -364,11 +352,6 @@ export default function InboxPanel({
             <span>Calendar</span>
           </TabsTrigger>
         </TabsList>
-        <ComposeEmail
-          onSend={sendPreview}
-          accounts={accounts}
-          container={workspaceNode}
-        />
       </div>
       {notice && (
         <p className="preview-notice workspace-notice" role="status">
@@ -612,7 +595,7 @@ export default function InboxPanel({
         <div className="workspace-heading">
           <div>
             <h2>Sent messages</h2>
-            <p>Messages composed in this preview.</p>
+            <p>Replies you approved in this preview.</p>
           </div>
           <strong>{sentMessages.length} sent</strong>
         </div>
@@ -650,7 +633,7 @@ export default function InboxPanel({
               ))}
               {!sentMessages.length && (
                 <p className="empty-state">
-                  No sent messages yet. Choose Compose to write one.
+                  No sent messages yet. Approve a draft to see it here.
                 </p>
               )}
             </div>

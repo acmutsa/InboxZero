@@ -10,7 +10,6 @@ export default function CalendarSkeleton() {
             <Skeleton className="calendar-skeleton-title" />
             <Skeleton className="calendar-skeleton-description" />
           </div>
-          <Skeleton className="calendar-skeleton-actions" />
         </div>
         <div className="calendar-layout">
           <div className="calendar-skeleton-sidebar">
