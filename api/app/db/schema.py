@@ -73,20 +73,21 @@ class EmailAccount(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     
     user: Mapped[User] = relationship(back_populates="email_accounts")
-    tokens: Mapped[list[EmailAccountToken]] = relationship(back_populates="email_account", cascade="all, delete-orphan", passive_deletes=True)
+    token: Mapped[EmailAccountToken | None] = relationship(back_populates="email_account", uselist=False, cascade="all, delete-orphan", passive_deletes=True)
     emails: Mapped[list[Email]] = relationship(back_populates="email_account", cascade="all, delete-orphan", passive_deletes=True)
     drafts: Mapped[list[Draft]] = relationship(back_populates="email_account", cascade="all, delete-orphan", passive_deletes=True)
 
 
 class EmailAccountToken(Base):
     __tablename__ = "email_account_tokens"
+    __table_args__ = (UniqueConstraint("email_account_id", name="uq_email_account_tokens_email_account_id"),)
 
     email_account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("email_accounts.id", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"), nullable=False)
     authentication_token: Mapped[str] = mapped_column(Text, nullable=False)
     refresh_token: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    email_account: Mapped[EmailAccount] = relationship(back_populates="tokens")
+    email_account: Mapped[EmailAccount] = relationship(back_populates="token")
 
 
 class Email(Base):
