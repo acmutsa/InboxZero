@@ -1,0 +1,38 @@
+.site-footer {
+  min-height: 260px;
+  padding: 48px max(24px, calc((100% - 1216px) / 2));
+  background: var(--background);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+.site-footer nav {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--muted-foreground);
+  font-size: 16px;
+  line-height: 21px;
+}
+.site-footer nav strong {
+  font-size: 15px;
+}
+.site-footer a:hover {
+  color: var(--primary);
+}
+.footer-brand {
+  margin-left: auto;
+  font-size: 26px;
+  font-weight: 700;
+}
+@media (max-width: 760px) {
+  .site-footer {
+    min-height: 240px;
+  }
+}
+@media (max-width: 520px) {
+  .footer-brand {
+    font-size: 22px;
+  }
+}

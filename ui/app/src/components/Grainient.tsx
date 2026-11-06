@@ -31,7 +31,15 @@ interface GrainientProps {
   className?: string;
 }
 
-const hexToRgb = (hex: string): [number, number, number] => {
+const hexToRgb = (color: string, element: HTMLElement): [number, number, number] => {
+  // WebGL needs numeric RGB values; resolve shared CSS palette tokens first.
+  const styles = getComputedStyle(element);
+  let hex = color.trim();
+  while (/^var\(--[\w-]+\)$/.test(hex)) {
+    const resolved = styles.getPropertyValue(hex.slice(4, -1)).trim();
+    if (!resolved || resolved === hex) break;
+    hex = resolved;
+  }
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return [1, 1, 1];
   return [
@@ -170,9 +178,9 @@ export default function Grainient({
   centerX = 0.0,
   centerY = 0.0,
   zoom = 0.9,
-  color1 = "#FF9FFC",
-  color2 = "#5227FF",
-  color3 = "#B497CF",
+  color1 = "var(--gradient-sky)",
+  color2 = "var(--gradient-cobalt)",
+  color3 = "var(--gradient-navy)",
   lightMode = false,
   className = "",
 }: GrainientProps) {
@@ -183,12 +191,20 @@ export default function Grainient({
     const container = containerRef.current;
     if (!container) return;
 
-    const renderer = new Renderer({
-      webgl: 2,
-      alpha: true,
-      antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2),
-    });
+    let renderer: Renderer;
+    try {
+      renderer = new Renderer({
+        webgl: 2,
+        alpha: true,
+        depth: false,
+        antialias: false,
+        dpr: Math.min(window.devicePixelRatio || 1, 2),
+      });
+    } catch {
+      return; // Keep the CSS gradient when WebGL is unavailable.
+    }
+    // The shader requires WebGL 2; OGL may otherwise fall back to WebGL 1.
+    if (!renderer.isWebgl2) return;
 
     const gl = renderer.gl;
     const canvas = gl.canvas;
@@ -336,9 +352,9 @@ export default function Grainient({
     u.uSaturation.value = saturation;
     u.uCenterOffset.value = new Float32Array([centerX, centerY]);
     u.uZoom.value = zoom;
-    u.uColor1.value = new Float32Array(hexToRgb(color1));
-    u.uColor2.value = new Float32Array(hexToRgb(color2));
-    u.uColor3.value = new Float32Array(hexToRgb(color3));
+    u.uColor1.value = new Float32Array(hexToRgb(color1, container));
+    u.uColor2.value = new Float32Array(hexToRgb(color2, container));
+    u.uColor3.value = new Float32Array(hexToRgb(color3, container));
     u.uLightMode.value = lightMode ? 1.0 : 0.0;
     // Render updated colors even when the animation is paused.
     ctx.renderer.render({ scene: ctx.mesh });

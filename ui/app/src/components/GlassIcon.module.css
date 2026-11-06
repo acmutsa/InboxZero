@@ -1,0 +1,58 @@
+.glass-icon {
+  --icon-tint: var(--palette-blue-500);
+  position: relative;
+  display: inline-block;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  isolation: isolate;
+}
+.glass-icon[data-tone='violet'] {
+  --icon-tint: var(--palette-blue-600);
+}
+.glass-icon[data-tone='mint'] {
+  --icon-tint: var(--palette-blue-400);
+}
+.glass-icon-back {
+  position: absolute;
+  width: 43px;
+  height: 43px;
+  top: 3px;
+  right: 2px;
+  border-radius: 13px;
+  transform: rotate(-12deg);
+  background: linear-gradient(
+    145deg,
+    var(--icon-tint),
+    color-mix(in srgb, var(--icon-tint) 65%, var(--palette-blue-800))
+  );
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--icon-tint) 25%, transparent);
+}
+.glass-icon-front {
+  position: absolute;
+  left: 1px;
+  bottom: 3px;
+  display: grid;
+  place-items: center;
+  width: 49px;
+  height: 47px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--palette-blue-100) 50.2%, transparent), color-mix(in srgb, var(--palette-blue-200) 14.9%, transparent));
+  border: 1px solid color-mix(in srgb, var(--palette-blue-50) 47.8%, transparent);
+  box-shadow:
+    inset 0 1px 2px color-mix(in srgb, var(--palette-blue-50) 36.1%, transparent),
+    0 4px 12px color-mix(in srgb, var(--palette-blue-950) 10.2%, transparent);
+  backdrop-filter: blur(6px);
+}
+.glass-icon-front svg {
+  width: 25px;
+  height: 25px;
+  color: var(--palette-blue-50);
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--palette-blue-800) 25.1%, transparent));
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-icon-front {
+    background: var(--palette-blue-500);
+    backdrop-filter: none;
+  }
+}

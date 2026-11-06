@@ -10,7 +10,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Card } from '@/components/ui/card';
 import {
   ChartContainer,
   ChartTooltip,
@@ -27,13 +26,14 @@ import {
   draftPercentage,
   draftRequirements,
 } from '@/lib/demo-analytics';
+import chartsStyles from '@/components/profile/EmailCharts.module.css';
 
 const categoryConfig = {
-  gmail: { label: 'Gmail', color: 'var(--primary)' },
-  outlook: { label: 'Outlook', color: 'var(--muted-foreground)' },
+  gmail: { label: 'Gmail', color: 'var(--chart-1)' },
+  outlook: { label: 'Outlook', color: 'var(--chart-2)' },
 } satisfies ChartConfig;
 const draftConfig = {
-  required: { label: 'Draft required', color: 'var(--primary)' },
+  required: { label: 'Draft required', color: 'var(--chart-1)' },
   notRequired: { label: 'No draft', color: 'var(--border)' },
 } satisfies ChartConfig;
 
@@ -77,18 +77,18 @@ function useChartEntrance() {
   };
 }
 
-export function CategoryChart() {
+function CategoryChart() {
   const { ref, ready, animate } = useChartEntrance();
   return (
-    <Card ref={ref} className="chart-card">
+    <div ref={ref} className={chartsStyles['chart-card']}>
       <h3>Emails by category</h3>
-      <div className="chart-legend">
+      <div className={chartsStyles['chart-legend']}>
         <span>
-          <i className="legend-gmail" />
+          <i className={chartsStyles['legend-gmail']} />
           Gmail
         </span>
         <span>
-          <i className="legend-outlook" />
+          <i className={chartsStyles['legend-outlook']} />
           Outlook
         </span>
         <small>Scale: 0–150 emails</small>
@@ -96,7 +96,7 @@ export function CategoryChart() {
       {ready ? (
         <ChartContainer
           config={categoryConfig}
-          className="category-chart"
+          className={chartsStyles['category-chart']}
           aria-label="Email counts by category and provider"
         >
           <BarChart
@@ -194,20 +194,20 @@ export function CategoryChart() {
           ))}
         </tbody>
       </table>
-    </Card>
+    </div>
   );
 }
 
-export function DraftChart() {
+function DraftChart() {
   const { ref, ready, animate } = useChartEntrance();
   return (
-    <Card ref={ref} className="draft-analysis">
+    <div ref={ref} className={chartsStyles['draft-analysis']}>
       <h3>Draft requirements</h3>
-      <div className="donut">
+      <div className={chartsStyles['donut']}>
         {ready && (
           <ChartContainer
             config={draftConfig}
-            className="draft-chart"
+            className={chartsStyles['draft-chart']}
             aria-label={`${draftTotal} emails require a draft; ${emailTotal - draftTotal} do not.`}
           >
             <PieChart accessibilityLayer>
@@ -230,7 +230,7 @@ export function DraftChart() {
             </PieChart>
           </ChartContainer>
         )}
-        <div className="donut-total">
+        <div className={chartsStyles['donut-total']}>
           <strong>{emailTotal}</strong>
           <small>TOTAL EMAILS</small>
         </div>
@@ -248,6 +248,10 @@ export function DraftChart() {
         Outlook: {draftCounts.outlook} draft /{' '}
         {outlookTotal - draftCounts.outlook} no draft
       </p>
-    </Card>
+    </div>
   );
+}
+
+export default function EmailCharts() {
+  return <><CategoryChart /><DraftChart /></>;
 }
