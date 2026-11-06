@@ -39,3 +39,4 @@ SQLAlchemy==2.0.49
 PyJWT==2.12.1
 pytest==9.0.3
 psycopg[binary]
+httpx2

@@ -23,8 +23,8 @@ class MicrosoftOAuth:
         self.client_secret = os.getenv("OUTLOOK_CLIENT_SECRET")
         self.redirect_uri = os.getenv(
             "OUTLOOK_REDIRECT_URI",
-            "http://localhost:8000/auth/outlook/redirect",
-        )
+             "http://localhost:8000/auth/outlook/callback",
+            )
 
         if not self.client_id or not self.client_secret:
             raise ValueError(
@@ -68,6 +68,57 @@ class MicrosoftOAuth:
             raise RuntimeError("Microsoft token exchange failed")
 
         return result
+
+    def refresh_access_token(self, refresh_token: str) -> dict:
+        """
+        Exchange a Microsoft refresh token for a new access token.
+        """
+        if not refresh_token:
+            raise ValueError("Microsoft refresh token is missing")
+
+        result = self.app.acquire_token_by_refresh_token(
+            refresh_token=refresh_token,
+            scopes=self.SCOPES,
+        )
+
+        if "access_token" not in result:
+            raise RuntimeError(
+                "Microsoft token refresh failed: "
+                + result.get("error", "unknown_error")
+            )
+
+        return result
+
+    def get_account_profile(self, access_token: str) -> dict:
+        """
+        Retrieve the connected Microsoft account's ID and email.
+        """
+        response = requests.get(
+            f"{self.GRAPH_URL}/me",
+            headers={
+                "Authorization": f"Bearer {access_token}"
+            },
+            timeout=30,
+        )
+
+        response.raise_for_status()
+        profile = response.json()
+
+        account_id = profile.get("id")
+        email = (
+            profile.get("mail")
+            or profile.get("userPrincipalName")
+        )
+
+        if not account_id or not email:
+            raise ValueError(
+                "Microsoft account ID or email is missing"
+            )
+
+        return {
+            "microsoft_account_id": account_id,
+            "email": email,
+        }
 
 
     def get_verified_email(self, access_token: str) -> str:

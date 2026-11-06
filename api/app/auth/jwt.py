@@ -1,15 +1,30 @@
+import os
 import jwt
 
+from functools import lru_cache
 from typing import Annotated
-from typing import Any
 
-from fastapi import Header
-from fastapi import HTTPException
-from fastapi import status
+from fastapi import Header, HTTPException, status
+from jwt import PyJWKClient
 
 from app.models.decoded_jwt import DecodedJWT
 
-from app.config import config
+
+@lru_cache
+def get_clerk_jwks_client():
+    jwks_url = os.getenv("CLERK_JWKS_URL")
+
+    if not jwks_url:
+        raise RuntimeError(
+            "CLERK_JWKS_URL is missing from .env"
+        )
+
+    if not jwks_url.startswith("https://"):
+        raise RuntimeError(
+            "CLERK_JWKS_URL must use HTTPS"
+        )
+
+    return PyJWKClient(jwks_url)
 
 
 def decode(
@@ -22,46 +37,58 @@ def decode(
             detail="Missing Authorization Header",
         )
 
+    parts = authorization.split()
+
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Authorization header format",
+        )
+
+    token = parts[1]
+
+    issuer = os.getenv("CLERK_ISSUER")
+    audience = os.getenv("CLERK_AUDIENCE")
+
+    if not issuer:
+        raise HTTPException(
+            status_code=500,
+            detail="Clerk issuer is not configured",
+        )
+
     try:
-        parts = authorization.split(" ")
-        if len(parts) != 2 or parts[0].lower() != "bearer":
-            raise ValueError("Invalid header format")
+        signing_key = get_clerk_jwks_client().get_signing_key_from_jwt(token)
 
-        token = parts[1]
+        options = {
+            "require": ["exp", "iat", "nbf", "iss", "sub"],
+            "verify_aud": bool(audience),
+        }
 
-        payload: dict[str, Any] = jwt.decode(
+        payload = jwt.decode(
             token,
-            key=config.SECRET_KEY,
-            algorithms=[config.ALGORITHM],
-            audience=config.get_audience_list,
-            options={"require": ["exp", "iat", "sub", "aud"], "verify_exp": True},
+            key=signing_key.key,
+            algorithms=["RS256"],
+            issuer=issuer,
+            audience=audience if audience else None,
+            options=options,
+            leeway=5,
         )
 
         user_id = payload.get("sub")
 
-        if not isinstance(user_id, str):
-            raise ValueError("JWT claim 'sub' must be a string")
+        if not isinstance(user_id, str) or not user_id:
+            raise jwt.InvalidTokenError("Missing user ID")
 
         return DecodedJWT(user_id=user_id)
 
-    except jwt.ExpiredSignatureError:
+    except jwt.PyJWTError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
+            status_code=401,
+            detail="Invalid or expired Clerk token",
         )
 
-    except jwt.InvalidTokenError:
+    except (RuntimeError, ValueError, requests.RequestException):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token signature"
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token claims",
-        )
-
-    except (IndexError, AttributeError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Authorization header format",
+            status_code=503,
+            detail="Clerk verification service unavailable",
         )
