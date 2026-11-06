@@ -7,6 +7,7 @@ import { savePreviewValue } from '@/lib/preview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import authStyles from '@/components/AuthShell.module.css';
 
 export default function RegistrationForm() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function RegistrationForm() {
         Tell us a little about yourself to finish setting up your profile.
       </p>
       <form
-        className="form-stack"
+        className={authStyles['form-stack']}
         onSubmit={(e) => {
           e.preventDefault();
           savePreviewValue(
@@ -38,7 +39,7 @@ export default function RegistrationForm() {
           router.push('/profile');
         }}
       >
-        <div className="form-field">
+        <div className={authStyles['form-field']}>
           <Label htmlFor="first-name">First name *</Label>
           <Input
             id="first-name"
@@ -51,7 +52,7 @@ export default function RegistrationForm() {
             onChange={(e) => setFirstName(e.target.value)}
           />
         </div>
-        <div className="form-field">
+        <div className={authStyles['form-field']}>
           <Label htmlFor="last-name">Last name *</Label>
           <Input
             id="last-name"
@@ -64,7 +65,7 @@ export default function RegistrationForm() {
             onChange={(e) => setLastName(e.target.value)}
           />
         </div>
-        <div className="form-field">
+        <div className={authStyles['form-field']}>
           <Label htmlFor="primary-email">Primary email *</Label>
           <Input
             id="primary-email"
@@ -79,7 +80,7 @@ export default function RegistrationForm() {
           <small id="email-hint">Pre-filled from your sign-up email.</small>
         </div>
         <small>* Required fields</small>
-        <Button className="auth-submit" type="submit">
+        <Button className={authStyles['auth-submit']} type="submit">
           Continue to my profile →
         </Button>
       </form>

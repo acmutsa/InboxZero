@@ -1,16 +1,14 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useSessionValue } from '@/hooks/useSessionValue';
 import { clearPreview } from '@/lib/preview';
 import InboxPanel from '@/components/InboxPanel';
-import FloatingNavLinks from '@/components/FloatingNavLinks';
-import SiteFooter from '@/components/SiteFooter';
+import FloatingNavbar from '@/components/FloatingNavbar';
+import Grainient from '@/components/Grainient';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Dialog,
   DialogContent,
@@ -24,12 +22,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ProviderCard from './ProviderCard';
-import { CategoryChart, DraftChart } from './EmailCharts';
+import ActivityCharts from './ActivityCharts';
 import { sampleAccounts, type PreviewAccount } from '@/lib/preview-accounts';
 import { emailTotal, gmailTotal, outlookTotal } from '@/lib/demo-analytics';
+import dialogStyles from '@/components/ui/PreviewDialog.module.css';
+import profileStyles from '@/components/profile/ProfileDashboard.module.css';
+import navigationStyles from '@/components/FloatingNavbar.module.css';
 
 type Person = { firstName: string; lastName: string; email: string };
-const profileTabs = ['Profile', 'Accounts', 'Analytics'];
+const profileTabs = ['Profile', 'Workspace', 'Activity'];
 const samplePerson: Person = { firstName: 'Maya', lastName: 'Chen', email: '' };
 
 export default function ProfileDashboard() {
@@ -65,131 +66,103 @@ export default function ProfileDashboard() {
   }
 
   return (
-    <main className="gradient-page profile-page">
-      <header className="floating-nav profile-header">
-        <Link className="brand" href="/">
-          Inbox Zero
-        </Link>
-        <nav aria-label="Profile navigation">
-          <FloatingNavLinks tabs={profileTabs} />
-        </nav>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="user-menu"
-              aria-label={`Open account menu for ${person.firstName}`}
-            >
-              <Avatar className="profile-avatar" aria-hidden="true">
-                <AvatarFallback>
+    <main className={`gradient-page ${profileStyles['profile-page']}`}>
+      <FloatingNavbar
+        tabs={profileTabs}
+        label="Profile page sections"
+        action={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                className={navigationStyles['nav-account']}
+                aria-label={`Open account menu for ${person.firstName}`}
+                title="Account menu"
+              >
+                <span aria-hidden="true">
                   {person.firstName.slice(0, 1).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <a href="#profile">
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem disabled>
                 {person.firstName} {person.lastName}
-              </a>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                clearPreview();
-                router.push('/auth/sign-in');
-              }}
-            >
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </header>
-      <section
-        id="profile"
-        className="profile-main"
-        aria-labelledby="profile-title"
-      >
-        <h1 id="profile-title">Your profile</h1>
-        <Card className="identity glass-surface">
-          <Avatar className="profile-avatar" aria-hidden="true">
-            <AvatarFallback>
-              {person.firstName.slice(0, 1).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h2>Hello, {person.firstName}!</h2>
-            <p>{person.email || 'Personal workspace · Sample profile'}</p>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  clearPreview();
+                  router.push('/auth/sign-in');
+                }}
+              >
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
+      <section id="profile" className={profileStyles['profile-section']} aria-labelledby="profile-title">
+        <div className={profileStyles['profile-summary']}>
+          <div className={profileStyles['profile-gradient']} aria-hidden="true">
+            <Grainient
+              timeSpeed={1.5}
+              grainAmount={0.015}
+              contrast={1.1}
+              zoom={0.9}
+            />
           </div>
-        </Card>
-        <section
-          id="accounts"
-          className="accounts"
-          aria-labelledby="accounts-title"
-        >
-          <div className="section-heading">
-            <h2 id="accounts-title">Link accounts</h2>
-            <Button className="add-email" onClick={() => setAddOpen(true)}>
+          <div className={profileStyles['profile-header']}>
+            <div className={profileStyles['profile-copy']}>
+              <span className="eyebrow">Your profile</span>
+              <h1 id="profile-title">Hello, {person.firstName}!</h1>
+            </div>
+            <Button className={profileStyles['add-email']} onClick={() => setAddOpen(true)}>
               Add email
             </Button>
           </div>
-          <p className="muted">
-            Connect an email account or manage your existing connections.
-          </p>
-          <div className="provider-grid">
-            {accounts.map((account) => (
-              <ProviderCard
-                key={account.email}
-                {...account}
-                onConnectedChange={(connected) =>
-                  setAccounts((previous) =>
-                    previous.map((item) =>
-                      item.email === account.email
-                        ? { ...item, connected }
-                        : item,
-                    ),
-                  )
-                }
-              />
+          <section id="accounts" className={profileStyles['page-section']} aria-labelledby="accounts-title">
+            <h2 id="accounts-title" className="sr-only">Linked email accounts</h2>
+            <div className={profileStyles['provider-grid']}>
+              {accounts.map((account) => (
+                <ProviderCard
+                  key={account.email}
+                  {...account}
+                  onConnectedChange={(connected) =>
+                    setAccounts((previous) =>
+                      previous.map((item) =>
+                        item.email === account.email
+                          ? { ...item, connected }
+                          : item,
+                      ),
+                    )
+                  }
+                />
+              ))}
+            </div>
+          </section>
+        </div>
+      </section>
+      <section id="workspace" aria-label="Email workspace">
+        <InboxPanel name={person.firstName} />
+      </section>
+      <section id="activity" className={profileStyles['page-section']} aria-labelledby="activity-title">
+        <Card className={`${profileStyles['activity-panel']} glass-surface`}>
+          <h2 id="activity-title" className={profileStyles['activity-heading']}>Activity</h2>
+          <div className={profileStyles['metrics']}>
+            {[
+              [emailTotal, 'Total emails'],
+              [gmailTotal, 'Gmail'],
+              [outlookTotal, 'Outlook'],
+            ].map(([n, label]) => (
+              <div key={label}>
+                <strong>{n}</strong>
+                <p>{label}</p>
+              </div>
             ))}
           </div>
-        </section>
-        <InboxPanel name={person.firstName} accounts={accounts} />
+          <ActivityCharts />
+        </Card>
       </section>
-      <section
-        id="analytics"
-        className="analytics"
-        aria-labelledby="analytics-title"
-      >
-        <div className="section-heading">
-          <div>
-            <h2 id="analytics-title">Email activity</h2>
-            <p>
-              Email volume, categories, and draft needs across your connected
-              accounts.
-            </p>
-          </div>
-          <small>Last 30 days · Sample data</small>
-        </div>
-        <div className="metrics">
-          {[
-            [emailTotal, 'Total emails'],
-            [gmailTotal, 'Gmail'],
-            [outlookTotal, 'Outlook'],
-          ].map(([n, label]) => (
-            <Card className="glass-surface" key={label}>
-              <strong>{n}</strong>
-              <p>{label}</p>
-            </Card>
-          ))}
-        </div>
-        <div className="charts">
-          <CategoryChart />
-          <DraftChart />
-        </div>
-      </section>
-      <SiteFooter profile />
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="preview-dialog">
+        <DialogContent className={dialogStyles['preview-dialog']}>
           <DialogTitle>Add an email account</DialogTitle>
           <DialogDescription>
             Choose a provider to connect another inbox.

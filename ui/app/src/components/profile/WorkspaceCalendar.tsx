@@ -14,6 +14,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import calendarStyles from '@/components/profile/WorkspaceCalendar.module.css';
+import dialogStyles from '@/components/ui/PreviewDialog.module.css';
+import inboxStyles from '@/components/InboxPanel.module.css';
 
 type CalendarEvent = {
   id: number;
@@ -131,7 +134,7 @@ export default function WorkspaceCalendar() {
     const timeRange = `${formatTime(hour * 60 + minute)}–${formatTime(end)} ${end % 1440 >= 720 ? 'PM' : 'AM'}`;
     return (
       <button
-        className={`calendar-event${timed ? ' calendar-event-timed' : ''}${timed && event.duration <= 30 ? ' calendar-event-compact' : ''}`}
+        className={`${calendarStyles['calendar-event']}${timed ? ` ${calendarStyles['calendar-event-timed']}` : ""}${timed && event.duration <= 30 ? ` ${calendarStyles['calendar-event-compact']}` : ""}`}
         data-calendar={event.calendar}
         style={
           timed
@@ -153,15 +156,15 @@ export default function WorkspaceCalendar() {
 
   return (
     <>
-      <div className="workspace-heading calendar-heading">
+      <div className={`${inboxStyles['workspace-heading']} ${calendarStyles['calendar-heading']}`}>
         <div>
           <h2>My Calendar</h2>
           <p>A little space for everything on your schedule.</p>
         </div>
       </div>
-      <div className="calendar-layout">
-        <aside className="calendar-sidebar">
-          <Card className="mini-calendar">
+      <div className={calendarStyles['calendar-layout']}>
+        <aside className={calendarStyles['calendar-sidebar']}>
+          <Card className={calendarStyles['mini-calendar']}>
             <Calendar
               mode="single"
               required
@@ -171,14 +174,14 @@ export default function WorkspaceCalendar() {
               onMonthChange={setDate}
               today={previewToday}
               showOutsideDays={false}
-              className="workspace-date-picker"
+              className={calendarStyles['workspace-date-picker']}
             />
           </Card>
           {[
             ['My calendars', 'Personal', 'Work · Studio'],
             ['Other calendars', 'Team availability', 'Holidays'],
           ].map(([heading, ...items]) => (
-            <Card className="calendar-list" key={heading}>
+            <Card className={calendarStyles['calendar-list']} key={heading}>
               <h3>{heading}</h3>
               {items.map((item) => (
                 <Label key={item}>
@@ -198,11 +201,11 @@ export default function WorkspaceCalendar() {
             </Card>
           ))}
         </aside>
-        <div className="calendar-main">
-          <div className="calendar-range">
-            <div className="calendar-period">
+        <div className={calendarStyles['calendar-main']}>
+          <div className={calendarStyles['calendar-range']}>
+            <div className={calendarStyles['calendar-period']}>
               <h3>{monthLabel(date)}</h3>
-              <div className="calendar-period-controls">
+              <div className={calendarStyles['calendar-period-controls']}>
                 <Button
                   variant="outline"
                   size="icon-sm"
@@ -224,7 +227,7 @@ export default function WorkspaceCalendar() {
                 </Button>
               </div>
             </div>
-            <div className="calendar-actions">
+            <div className={calendarStyles['calendar-actions']}>
               <ToggleGroup
                 type="single"
                 value={view}
@@ -232,7 +235,7 @@ export default function WorkspaceCalendar() {
                   if (value) setView(value);
                 }}
                 variant="outline"
-                className="calendar-view-toggle"
+                className={calendarStyles['calendar-view-toggle']}
                 aria-label="Calendar view"
               >
                 {['Day', 'Week', 'Month'].map((label) => (
@@ -247,7 +250,7 @@ export default function WorkspaceCalendar() {
               </ToggleGroup>
             </div>
           </div>
-          <div className="calendar-caption">
+          <div className={calendarStyles['calendar-caption']}>
             <span>
               <CalendarDays aria-hidden="true" />
               {title}
@@ -256,13 +259,13 @@ export default function WorkspaceCalendar() {
           </div>
           <div
             ref={scrollRef}
-            className={`calendar-scroll${view !== 'Month' ? ' calendar-time-scroll' : ''}`}
+            className={`${calendarStyles['calendar-scroll']}${view !== "Month" ? ` ${calendarStyles['calendar-time-scroll']}` : ""}`}
             tabIndex={0}
             role="region"
             aria-label={`${view} calendar, local time`}
           >
             {view === 'Month' ? (
-              <div className="month-grid">
+              <div className={calendarStyles['month-grid']}>
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(
                   (day) => (
                     <strong key={day}>{day}</strong>
@@ -270,9 +273,7 @@ export default function WorkspaceCalendar() {
                 )}
                 {monthDays.map((day) => (
                   <div
-                    className={
-                      day.getMonth() !== date.getMonth() ? 'outside-month' : ''
-                    }
+                    className={day.getMonth() !== date.getMonth() ? calendarStyles['outside-month'] : ""}
                     key={dateKey(day)}
                   >
                     <button
@@ -291,15 +292,15 @@ export default function WorkspaceCalendar() {
               </div>
             ) : (
               <div
-                className={`week-grid ${view === 'Day' ? 'day-grid' : ''}`}
+                className={`${calendarStyles['week-grid']} ${view === "Day" ? calendarStyles['day-grid'] : ""}`}
                 style={{
                   gridTemplateColumns: `60px repeat(${days.length}, minmax(0, 1fr))`,
                 }}
               >
-                <div className="calendar-day-label">Time</div>
+                <div className={calendarStyles['calendar-day-label']}>Time</div>
                 {days.map((day) => (
                   <div
-                    className="calendar-day-label"
+                    className={calendarStyles['calendar-day-label']}
                     key={dateKey(day)}
                     data-today={dateKey(day) === dateKey(previewToday)}
                   >
@@ -310,11 +311,11 @@ export default function WorkspaceCalendar() {
                   </div>
                 ))}
                 {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                  <div className="time-row" key={hour}>
-                    <div className="hour-label">{hourLabel(hour)}</div>
+                  <div className={calendarStyles['time-row']} key={hour}>
+                    <div className={calendarStyles['hour-label']}>{hourLabel(hour)}</div>
                     {days.map((day) => (
                       <div
-                        className="time-cell"
+                        className={calendarStyles['time-cell']}
                         data-weekend={day.getDay() === 0 || day.getDay() === 6}
                         key={dateKey(day)}
                       >
@@ -340,7 +341,7 @@ export default function WorkspaceCalendar() {
           if (!open) setSelected(null);
         }}
       >
-        <DialogContent className="preview-dialog">
+        <DialogContent className={dialogStyles['preview-dialog']}>
           <DialogTitle>{selected?.title}</DialogTitle>
           <DialogDescription>
             {selected?.date} · {selected?.time} · {selected?.duration} minutes

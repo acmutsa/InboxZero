@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react';
+import sectionStyles from './Section.module.css';
+
 export function Section({
   id,
-  eyebrow,
   title,
   description,
   children,
   className = '',
 }: {
   id: string;
-  eyebrow?: string;
   title: string;
   description?: string;
   children?: ReactNode;
@@ -17,13 +17,12 @@ export function Section({
   return (
     <section
       id={id}
-      className={`section ${className}`}
+      className={`${sectionStyles['section']} ${className}`}
       aria-labelledby={`${id}-heading`}
     >
-      <div className="section-inner">
-        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+      <div className={sectionStyles['section-inner']}>
         <h2 id={`${id}-heading`}>{title}</h2>
-        {description && <p className="section-description">{description}</p>}
+        {description && <p className={sectionStyles['section-description']}>{description}</p>}
         {children}
       </div>
     </section>
