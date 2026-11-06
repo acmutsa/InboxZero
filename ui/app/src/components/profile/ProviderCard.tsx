@@ -1,8 +1,9 @@
 'use client';
-import GlassIcon from '@/components/GlassIcon';
+import { Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import providerStyles from '@/components/profile/ProviderCard.module.css';
 
 export default function ProviderCard({
   provider,
@@ -17,30 +18,30 @@ export default function ProviderCard({
 }) {
   return (
     <Card
-      className="provider-card glass-surface"
+      className={`${providerStyles['provider-card']} glass-surface`}
       data-tone={provider === 'Gmail' ? 'blue' : 'violet'}
+      data-connected={connected}
     >
-      <div className="provider-identity">
-        <GlassIcon
-          name="mail"
-          tone={provider === 'Gmail' ? 'blue' : 'violet'}
-        />
+      <div className={providerStyles['provider-identity']}>
+        <span className={providerStyles['provider-icon']} aria-hidden="true"><Mail /></span>
         <div>
-          <h3>{provider}</h3>
-          <p>{email}</p>
-          <Badge
-            variant="outline"
-            className="provider-status"
-            data-connected={connected}
-            aria-live="polite"
-          >
-            <span aria-hidden="true">{connected ? '●' : '○'}</span>
-            {connected ? 'Connected · Active' : 'Disconnected'}
-          </Badge>
+          <div className={providerStyles['provider-title']}>
+            <h3>{provider}</h3>
+            <Badge
+              variant="outline"
+              className={providerStyles['provider-status']}
+              data-connected={connected}
+              aria-live="polite"
+            >
+              <span aria-hidden="true">{connected ? '●' : '○'}</span>
+              {connected ? 'Connected' : 'Disconnected'}
+            </Badge>
+          </div>
+          <p title={email}>{email}</p>
         </div>
       </div>
       <Button
-        variant={connected ? 'outline' : 'default'}
+        variant="ghost"
         onClick={() => onConnectedChange(!connected)}
         aria-label={`${connected ? 'Disconnect' : 'Connect'} ${email}`}
       >

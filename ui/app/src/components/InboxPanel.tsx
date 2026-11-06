@@ -28,66 +28,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import calendarStyles from '@/components/profile/WorkspaceCalendar.module.css';
+import inboxStyles from '@/components/InboxPanel.module.css';
+import { previewInbox, previewDrafts, previewUnreadIds, type PreviewMessage } from '@/lib/preview-messages';
+
+type Message = PreviewMessage & { from?: string };
+
 const WorkspaceCalendar = dynamic(
   () => import('@/components/profile/WorkspaceCalendar'),
   {
     loading: () => <CalendarSkeleton />,
   },
 );
-
-const messages = [
-  {
-    id: 'alex',
-    sender: 'Alex Morgan',
-    email: 'alex@studio.dev',
-    subject: 'Project update',
-    body: 'Could you share the latest update before our check-in?',
-    reply: 'Hi Alex, I’ll share the latest update before our check-in.',
-    provider: 'Gmail',
-    status: 'Draft ready · 9:42 AM',
-  },
-  {
-    id: 'studio',
-    sender: 'Studio team',
-    email: 'team@studio.dev',
-    subject: 'Friday catch-up',
-    body: 'Are you free for a quick catch-up on Friday at 10 AM?',
-    reply: 'Friday at 10 AM works for me. Looking forward to it.',
-    provider: 'Gmail',
-    status: 'Calendar checked · 9:15 AM',
-  },
-  {
-    id: 'digest',
-    sender: 'Weekly digest',
-    email: 'digest@studio.dev',
-    subject: 'This week’s highlights',
-    body: 'A curated collection of product news and design ideas.',
-    reply: '',
-    provider: 'Outlook',
-    status: 'Newsletter · Yesterday',
-  },
-  {
-    id: 'jamie',
-    sender: 'Jamie Park',
-    email: 'jamie@studio.dev',
-    subject: 'Design feedback',
-    body: 'I’ve added my comments to the latest designs.',
-    reply: 'Thanks, Jamie. I’ll review your comments and follow up.',
-    provider: 'Outlook',
-    status: 'Needs review · Yesterday',
-  },
-  {
-    id: 'taylor',
-    sender: 'Taylor Reed',
-    email: 'taylor@studio.dev',
-    subject: 'Next steps',
-    body: 'Here is the summary from our meeting. Could you send the next steps?',
-    reply: 'Thanks for the summary. I’ll send the next steps today.',
-    provider: 'Outlook',
-    status: 'Needs review · Yesterday',
-  },
-];
-type Message = (typeof messages)[number] & { from?: string };
 
 export default function InboxPanel({
   name = 'Maya',
@@ -112,23 +64,22 @@ export default function InboxPanel({
   const [reply, setReply] = useState('');
   const [savedReplies, setSavedReplies] = useState<Record<string, string>>({});
   const [approved, setApproved] = useState<string[]>([]);
+  const [sentMessages, setSentMessages] = useState<Message[]>([]);
   const [notice, setNotice] = useState('');
-  const [unreadIds, setUnreadIds] = useState(['alex', 'studio', 'jamie']);
+  const [unreadIds, setUnreadIds] = useState(previewUnreadIds);
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [archivedIds, setArchivedIds] = useState<string[]>([]);
   const [lastArchived, setLastArchived] = useState<string[]>([]);
-  const [sentMessages, setSentMessages] = useState<Message[]>([]);
-  const inboxCount = 12 - archivedIds.length;
-  const unreadCount = unreadIds.filter(
-    (id) => !archivedIds.includes(id),
+  const inboxCount = previewInbox.filter(
+    (message) => !archivedIds.includes(message.id),
   ).length;
-  const draftCount = 4 - approved.length;
+  const draftCount = previewDrafts.filter((message) => !approved.includes(message.id)).length;
   const isDraft = tab === 'drafts';
-  const visible = messages.filter(
+  const visible = (isDraft ? previewDrafts : previewInbox).filter(
     (message) =>
       (isDraft
-        ? message.reply && !approved.includes(message.id)
-        : message.id !== 'taylor' && !archivedIds.includes(message.id)) &&
+        ? !approved.includes(message.id)
+        : !archivedIds.includes(message.id)) &&
       (provider === 'all' || message.provider === provider) &&
       `${message.sender} ${message.subject} ${message.body}`
         .toLowerCase()
@@ -202,7 +153,7 @@ export default function InboxPanel({
   const reader = selected && (
     <section
       key={selected.id}
-      className="message-reader"
+      className={inboxStyles['message-reader']}
       aria-labelledby="message-reader-title"
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
@@ -211,7 +162,7 @@ export default function InboxPanel({
         }
       }}
     >
-      <div className="message-reader-toolbar">
+      <div className={inboxStyles['message-reader-toolbar']}>
         <Button variant="ghost" size="sm" onClick={closeMessage}>
           <ArrowLeft aria-hidden="true" />
           Back to {tab}
@@ -225,42 +176,31 @@ export default function InboxPanel({
           <X />
         </Button>
       </div>
-      <header className="message-reader-header">
+      <header className={inboxStyles['message-reader-header']}>
         <h3 id="message-reader-title" tabIndex={-1} ref={focusReaderTitle}>
           {selected.reply ? 'Re: ' : ''}
           {selected.subject}
         </h3>
         <p className="muted">
-          {selected.id.startsWith('sent-') || selected.reply ? 'To' : 'From'}{' '}
+          {selected.reply ? 'To' : 'From'}{' '}
           {selected.sender} · {selected.email}
         </p>
       </header>
-      {selected.from && (
-        <p className="muted sent-from">From: {selected.from}</p>
-      )}
-      <div className="message-reader-body">
+      <div className={inboxStyles['message-reader-body']}>
         <strong className="muted">
-          {selected.id.startsWith('sent-')
-            ? 'Message · Preview only'
-            : 'Original message'}
+          Original message
         </strong>
-        <p className="original-message">
-          {selected.id.startsWith('sent-') ? (
-            selected.body
-          ) : (
-            <>
-              Hi {name},<br />
-              <br />
-              {selected.body}
-              <br />
-              <br />
-              {selected.sender}
-            </>
-          )}
+        <p className={inboxStyles['original-message']}>
+          Hi {name},<br />
+          <br />
+          {selected.body}
+          <br />
+          <br />
+          {selected.sender}
         </p>
       </div>
       {selected.reply && (
-        <div className="message-reader-reply">
+        <div className={inboxStyles['message-reader-reply']}>
           <Label htmlFor="reply-preview">Suggested reply</Label>
           {editing ? (
             <Textarea
@@ -271,7 +211,7 @@ export default function InboxPanel({
               autoFocus
             />
           ) : (
-            <p className="reply-preview">{reply}</p>
+            <p className={inboxStyles['reply-preview']}>{reply}</p>
           )}
           {editing ? (
             <Button
@@ -318,6 +258,7 @@ export default function InboxPanel({
 
   return (
     <Tabs
+      orientation="vertical"
       ref={setWorkspaceNode}
       value={tab}
       onValueChange={(value) => {
@@ -328,33 +269,35 @@ export default function InboxPanel({
         setProvider('all');
         setCheckedIds([]);
       }}
-      className="workspace"
+      className={inboxStyles['workspace']}
     >
-      <div className="workspace-topbar">
-        <TabsList className="workspace-tabs" aria-label="Workspace views">
-          <TabsTrigger value="inbox">
+      <aside className={inboxStyles['workspace-sidebar']} aria-label="Workspace navigation">
+        <div className={inboxStyles['sidebar-heading']}>Workspace</div>
+        <TabsList className={inboxStyles['workspace-tabs']} aria-label="Workspace views">
+          <TabsTrigger value="inbox" title="Inbox">
             <Inbox aria-hidden="true" />
             <span>Inbox</span>
-            <span className="workspace-tab-count">{inboxCount}</span>
+            <span className={inboxStyles['workspace-tab-count']}>{inboxCount}</span>
           </TabsTrigger>
-          <TabsTrigger value="drafts">
+          <TabsTrigger value="drafts" title="Drafts">
             <FilePenLine aria-hidden="true" />
             <span>Drafts</span>
-            <span className="workspace-tab-count">{draftCount}</span>
+            <span className={inboxStyles['workspace-tab-count']}>{draftCount}</span>
           </TabsTrigger>
-          <TabsTrigger value="sent">
+          <TabsTrigger value="sent" title="Sent">
             <Send aria-hidden="true" />
             <span>Sent</span>
-            <span className="workspace-tab-count">{sentMessages.length}</span>
+            <span className={inboxStyles['workspace-tab-count']}>0</span>
           </TabsTrigger>
-          <TabsTrigger value="calendar">
+          <TabsTrigger value="calendar" title="Calendar">
             <CalendarDays aria-hidden="true" />
             <span>Calendar</span>
           </TabsTrigger>
         </TabsList>
-      </div>
+      </aside>
+      <div className={inboxStyles['workspace-main']}>
       {notice && (
-        <p className="preview-notice workspace-notice" role="status">
+        <p className={`${inboxStyles['preview-notice']} ${inboxStyles['workspace-notice']}`} role="status">
           {notice}
           {lastArchived.length > 0 && (
             <Button
@@ -373,23 +316,17 @@ export default function InboxPanel({
         </p>
       )}
       {['inbox', 'drafts'].map((view) => (
-        <TabsContent key={view} value={view} className="workspace-content">
-          <div className="workspace-heading">
+        <TabsContent key={view} value={view} className={inboxStyles['workspace-content']}>
+          {view === 'drafts' && <div className={inboxStyles['workspace-heading']}>
             <div>
-              <h2>{view === 'inbox' ? `${name}’s Inbox` : 'Your drafts'}</h2>
-              <p>
-                {view === 'inbox'
-                  ? 'Your latest messages, organized and ready for review.'
-                  : 'Review suggested replies before you send them.'}
-              </p>
+              <h2>Your drafts</h2>
+              <p>Review suggested replies before you send them.</p>
             </div>
             <strong aria-live="polite">
-              {view === 'inbox'
-                ? `${inboxCount} messages · ${unreadCount} unread`
-                : `${draftCount} drafts to review`}
+              {draftCount} drafts to review
             </strong>
-          </div>
-          <div className="workspace-search">
+          </div>}
+          <div className={inboxStyles['workspace-search']}>
             <Input
               aria-label={`Search ${view}`}
               placeholder={`Search ${view}…`}
@@ -422,11 +359,11 @@ export default function InboxPanel({
           </div>
           {view === 'inbox' && (
             <div
-              className="message-bulk-actions"
+              className={inboxStyles['message-bulk-actions']}
               role="group"
               aria-label="Email selection actions"
             >
-              <Label className="select-all">
+              <Label className={inboxStyles['select-all']}>
                 <Checkbox
                   aria-label="Select all visible emails"
                   disabled={!visible.length}
@@ -490,12 +427,12 @@ export default function InboxPanel({
               )}
             </div>
           )}
-          <div className="mail-layout" data-reading={selected !== null}>
-            <div className="mail-list-pane">
-              <div className="message-list">
+          <div className={inboxStyles['mail-layout']} data-reading={selected !== null}>
+            <div className={inboxStyles['mail-list-pane']}>
+              <div className={inboxStyles['message-list']}>
                 {visible.map((message) => (
                   <div
-                    className={`message-row${isDraft ? ' draft-row' : ''}`}
+                    className={`${inboxStyles['message-row']}${isDraft ? ` ${inboxStyles['draft-row']}` : ""}`}
                     data-open={selected?.id === message.id}
                     data-selected={checkedIds.includes(message.id)}
                     data-read-state={
@@ -521,14 +458,14 @@ export default function InboxPanel({
                       />
                     )}
                     <button
-                      className="message-open"
+                      className={inboxStyles['message-open']}
                       aria-pressed={selected?.id === message.id}
                       onClick={(event) => {
                         messageTrigger.current = event.currentTarget;
                         openMessage(message);
                       }}
                     >
-                      <span className="message-sender">
+                      <span className={inboxStyles['message-sender']}>
                         <strong>{message.sender}</strong>
                         <small>
                           {isDraft ? (
@@ -536,18 +473,17 @@ export default function InboxPanel({
                           ) : (
                             <>
                               <span
-                                className="message-read-indicator"
+                                className={inboxStyles['message-read-indicator']}
                                 aria-hidden="true"
                               />
                               {unreadIds.includes(message.id)
                                 ? 'Unread'
                                 : 'Read'}
-                              <span aria-hidden="true"> · </span>To {name}
                             </>
                           )}
                         </small>
                       </span>
-                      <span className="message-copy">
+                      <span className={inboxStyles['message-copy']}>
                         <strong>
                           {isDraft ? 'Re: ' : ''}
                           {message.subject}
@@ -558,13 +494,16 @@ export default function InboxPanel({
                             : message.body}
                         </span>
                       </span>
-                      <span className="message-status">
+                      <span className={inboxStyles['message-status']}>
+                        <span
+                          className={inboxStyles['message-status-label']}
+                          data-kind={approved.includes(message.id) ? 'approved' : message.reply ? 'action' : 'muted'}
+                        >
+                          {isDraft ? 'Draft ready' : approved.includes(message.id)
+                            ? 'Approved' : message.status.split(' · ')[0]}
+                        </span>
                         <small>
-                          {isDraft
-                            ? `${message.provider} · Ready to review`
-                            : approved.includes(message.id)
-                              ? 'Approved · Preview'
-                              : message.status}
+                          {isDraft ? message.provider : message.status.split(' · ')[1]}
                         </small>
                         {isDraft && <strong>Review draft →</strong>}
                       </span>
@@ -572,7 +511,7 @@ export default function InboxPanel({
                   </div>
                 ))}
                 {visible.length === 0 && (
-                  <p className="empty-state">
+                  <p className={inboxStyles['empty-state']}>
                     {query || provider !== 'all'
                       ? 'No messages match your search.'
                       : view === 'inbox'
@@ -584,47 +523,47 @@ export default function InboxPanel({
               <small>
                 {isDraft
                   ? 'Every draft needs your approval before sending.'
-                  : `Showing ${visible.length} of ${inboxCount} messages · Sample workspace`}
+                  : `Showing ${visible.length} of ${inboxCount} messages`}
               </small>
             </div>
             {tab === view && reader}
           </div>
         </TabsContent>
       ))}
-      <TabsContent value="sent" className="workspace-content">
-        <div className="workspace-heading">
+      <TabsContent value="sent" className={inboxStyles['workspace-content']}>
+        <div className={inboxStyles['workspace-heading']}>
           <div>
             <h2>Sent messages</h2>
             <p>Replies you approved in this preview.</p>
           </div>
           <strong>{sentMessages.length} sent</strong>
         </div>
-        <div className="mail-layout" data-reading={selected !== null}>
-          <div className="mail-list-pane">
-            <div className="message-list">
+        <div className={inboxStyles['mail-layout']} data-reading={selected !== null}>
+          <div className={inboxStyles['mail-list-pane']}>
+            <div className={inboxStyles['message-list']}>
               {sentMessages.map((message) => (
                 <div
-                  className="message-row sent-row"
+                  className={inboxStyles['message-row']}
                   data-open={selected?.id === message.id}
                   key={message.id}
                 >
                   <button
-                    className="message-open"
+                    className={inboxStyles['message-open']}
                     aria-pressed={selected?.id === message.id}
                     onClick={(event) => {
                       messageTrigger.current = event.currentTarget;
                       openMessage(message);
                     }}
                   >
-                    <span className="message-sender">
+                    <span className={inboxStyles['message-sender']}>
                       <strong title={message.email}>To: {message.email}</strong>
                       <small title={message.from}>From: {message.from}</small>
                     </span>
-                    <span className="message-copy">
+                    <span className={inboxStyles['message-copy']}>
                       <strong>{message.subject}</strong>
                       <span>{message.body}</span>
                     </span>
-                    <span className="message-status">
+                    <span className={inboxStyles['message-status']}>
                       <small>{message.status}</small>
                       <strong>View message →</strong>
                     </span>
@@ -632,13 +571,13 @@ export default function InboxPanel({
                 </div>
               ))}
               {!sentMessages.length && (
-                <p className="empty-state">
+                <p className={inboxStyles['empty-state']}>
                   No sent messages yet. Approve a draft to see it here.
                 </p>
               )}
             </div>
           </div>
-          {reader}
+          {tab === 'sent' && reader}
         </div>
       </TabsContent>
       {calendarOpened && (
@@ -646,11 +585,12 @@ export default function InboxPanel({
           value="calendar"
           forceMount
           hidden={tab !== 'calendar'}
-          className="calendar-content"
+          className={calendarStyles['calendar-content']}
         >
           <WorkspaceCalendar />
         </TabsContent>
       )}
+      </div>
     </Tabs>
   );
 }

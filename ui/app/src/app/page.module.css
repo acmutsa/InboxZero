@@ -1,0 +1,303 @@
+.hero {
+  --hero-fade: clamp(200px, 26vw, 340px);
+  position: relative;
+  isolation: isolate;
+}
+.hero-background {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  mask-image: linear-gradient(
+    to bottom,
+    var(--palette-shadow) calc(100% - var(--hero-fade)),
+    color-mix(in srgb, var(--palette-shadow) 55%, transparent) calc(100% - var(--hero-fade) / 2),
+    color-mix(in srgb, var(--palette-shadow) 15%, transparent) calc(100% - var(--hero-fade) / 5),
+    transparent 100%
+  );
+}
+.hero-copy {
+  position: relative;
+  margin: auto;
+  padding: 152px 24px 48px;
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  text-align: center;
+}
+.hero h1 {
+  font-size: clamp(44px, 6vw, 80px);
+  line-height: 1.05;
+  color: var(--foreground);
+  letter-spacing: -0.05em;
+  font-weight: 600;
+}
+.hero-copy > p {
+  font-size: 20px;
+  max-width: 620px;
+  line-height: 1.6;
+  color: var(--palette-blue-100);
+}
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 4px;
+}
+.light {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-weight: 500;
+  height: 48px;
+  padding: 0 24px;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--palette-blue-50) 60.0%, transparent);
+  border-radius: 100px;
+  background-color: var(--palette-blue-100);
+  color: var(--palette-blue-900);
+  font-size: 14px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--palette-blue-50) 70.2%, transparent), 0 4px 16px color-mix(in srgb, var(--palette-blue-950) 10.2%, transparent);
+  transition: background-color 160ms ease;
+}
+.light:hover {
+  background-color: var(--palette-blue-50);
+}
+.light svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 14px;
+  color: var(--palette-blue-100);
+  border-radius: 8px;
+}
+.secondary-link:hover {
+  color: var(--palette-blue-50);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.secondary-link svg,
+.approval-note svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.approval-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--palette-blue-200);
+  font-size: 12px;
+}
+.product-preview {
+  width: min(880px, calc(100% - 48px));
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+.landing-section {
+  position: relative;
+  scroll-margin-top: 152px;
+  --section-title-size: clamp(30px, 3.4vw, 44px);
+  --section-gap: 24px;
+}
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding: 28px 0;
+  border-radius: 24px;
+  width: 100%;
+  text-align: left;
+}
+.steps article {
+  padding: 0 28px;
+  position: relative;
+}
+.steps article + article {
+  border-left: 1px solid color-mix(in srgb, var(--palette-blue-200) 10.2%, transparent);
+}
+.step-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  color: var(--palette-blue-300);
+}
+.step-heading > span {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.step-heading svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.5;
+}
+.steps h3 {
+  font-size: 22px;
+  line-height: 1.3;
+}
+.steps p {
+  color: var(--palette-blue-300);
+  font-size: 14px;
+  line-height: 1.7;
+  margin-top: 10px;
+}
+.services {
+  background: linear-gradient(to bottom, var(--background) 0%, var(--palette-blue-900) 25%, var(--palette-blue-700) 75%, var(--background) 100%);
+}
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+}
+.service-card {
+  padding: 24px;
+  border-radius: 24px;
+  gap: 16px;
+  min-width: 0;
+}
+.service-card h3 {
+  font-size: 22px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+.service-card > p {
+  font-size: 14px;
+  color: var(--palette-blue-300);
+  line-height: 1.7;
+}
+.service-card > :global(.eyebrow) {
+  color: var(--primary);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.feature-example {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  min-height: 148px;
+  margin-top: auto;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--palette-blue-200) 7.8%, transparent);
+  background: color-mix(in srgb, var(--palette-blue-950) 20.0%, transparent);
+  font-size: 11px;
+}
+.feature-example > span {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.feature-example small {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--palette-blue-300) 7.8%, transparent);
+  color: var(--palette-blue-200);
+  font-size: 9px;
+}
+.feature-example > p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--palette-blue-100);
+}
+.feature-example > strong {
+  font-size: 20px;
+  font-weight: 500;
+}
+.example-label {
+  color: var(--palette-blue-300);
+  font-size: 10px;
+}
+.feature-example > .example-footer {
+  justify-content: flex-start;
+  gap: 6px;
+  color: var(--success);
+  font-size: 10px;
+}
+.example-footer svg {
+  width: 12px;
+  height: 12px;
+}
+.closing {
+  padding: 40px 32px;
+  border-radius: 24px;
+  width: 100%;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  text-align: center;
+}
+.closing h3 {
+  font-size: clamp(26px, 3vw, 36px);
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+}
+.closing p {
+  color: var(--palette-blue-300);
+  font-size: 15px;
+}
+@media (max-width: 1000px) {
+  .steps article {
+    padding: 0 20px;
+  }
+  .service-card {
+    padding: 20px;
+  }
+}
+@media (max-width: 760px) {
+  .hero-copy {
+    padding: 176px 20px 32px;
+    gap: 20px;
+  }
+  .hero-copy > p {
+    font-size: 17px;
+  }
+  .hero-actions {
+    gap: 16px;
+  }
+  .product-preview {
+    width: calc(100% - 32px);
+    padding-bottom: 16px;
+  }
+  .steps,
+  .service-grid {
+    grid-template-columns: 1fr;
+  }
+  .steps {
+    padding: 0 24px;
+  }
+  .steps article {
+    padding: 24px 0;
+  }
+  .steps article + article {
+    border-left: 0;
+    border-top: 1px solid color-mix(in srgb, var(--palette-blue-200) 10.2%, transparent);
+  }
+  .step-heading {
+    margin-bottom: 12px;
+  }
+  .service-card {
+    padding: 24px;
+  }
+  .closing {
+    padding: 32px 24px;
+  }
+}

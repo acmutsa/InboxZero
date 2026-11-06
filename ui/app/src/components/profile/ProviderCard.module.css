@@ -1,0 +1,96 @@
+.provider-card {
+  width: 360px;
+  max-width: 100%;
+  min-height: 76px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.provider-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.provider-card[data-connected='false'] {
+  border-style: dashed;
+}
+.provider-card[data-connected='false'] .provider-icon {
+  background: color-mix(in srgb, var(--palette-blue-300) 7.1%, transparent);
+  color: var(--muted-foreground);
+  border-color: var(--border);
+}
+.provider-identity > div {
+  min-width: 0;
+}
+.provider-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--palette-blue-200) 20.0%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--palette-blue-300) 14.1%, transparent);
+  color: var(--palette-blue-200);
+}
+.provider-card[data-tone='violet'] .provider-icon {
+  background: color-mix(in srgb, var(--palette-blue-300) 14.1%, transparent);
+  color: var(--palette-blue-200);
+}
+.provider-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.provider-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.provider-card h3 {
+  font-size: 13px;
+  line-height: 20px;
+}
+.provider-card p {
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 3px;
+  color: var(--muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.provider-status[data-slot] {
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 16px;
+}
+.provider-status[data-connected='true'] {
+  color: var(--success);
+}
+.provider-card [data-slot='button'] {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.provider-card[data-connected='false'] [data-slot='button'] {
+  color: var(--palette-blue-200);
+  background: color-mix(in srgb, var(--palette-blue-300) 10.2%, transparent);
+}
+@media (max-width: 520px) {
+  .provider-card {
+    width: 100%;
+  }
+}

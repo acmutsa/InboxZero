@@ -1,0 +1,116 @@
+.charts {
+  display: grid;
+  grid-template-columns: minmax(0, 764fr) minmax(0, 432fr);
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+.chart-card,
+.draft-analysis {
+  display: flex;
+  flex-direction: column;
+  height: 430px;
+  padding: 24px;
+  border: 0;
+  border-radius: 0;
+  gap: 12px;
+  min-width: 0;
+}
+.charts h3 {
+  font-size: 20px;
+  line-height: 28px;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.chart-legend small {
+  font-size: 11px;
+  font-weight: 400;
+}
+.chart-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.legend-gmail,
+.legend-outlook {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--chart-1);
+}
+.legend-outlook {
+  background: var(--chart-2);
+}
+.category-chart[data-slot] {
+  height: 300px;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: auto;
+}
+.category-chart[data-slot] :global(.recharts-cartesian-axis-tick) text {
+  fill: var(--foreground);
+}
+.draft-chart[data-slot] {
+  width: 190px;
+  height: 190px;
+  aspect-ratio: 1;
+}
+.draft-analysis {
+  align-items: center;
+  text-align: center;
+  border-left: 1px solid var(--border);
+}
+.donut {
+  position: relative;
+  width: 190px;
+  height: 190px;
+  flex-shrink: 0;
+}
+.donut-total {
+  pointer-events: none;
+  position: absolute;
+  top: 55px;
+  left: 20px;
+  width: 150px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.donut-total strong {
+  font-size: 32px;
+  line-height: 45px;
+}
+.donut-total small {
+  font-size: 10px;
+}
+.draft-analysis h4 {
+  font-size: 18px;
+  line-height: 26px;
+}
+.draft-analysis p {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+@media (max-width: 1000px) {
+  .charts {
+    grid-template-columns: 1fr;
+  }
+  .draft-analysis {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}
+@media (max-width: 760px) {
+  .chart-card,
+  .draft-analysis {
+    padding: 20px;
+  }
+}

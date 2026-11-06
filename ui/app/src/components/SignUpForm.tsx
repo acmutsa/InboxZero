@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { savePreviewValue } from '@/lib/preview';
+import authStyles from '@/components/AuthShell.module.css';
 
 /** Visual auth prototype. Replace with Clerk when authentication is connected. */
 export default function SignUpForm({ signIn = false }: { signIn?: boolean }) {
@@ -32,14 +33,14 @@ export default function SignUpForm({ signIn = false }: { signIn?: boolean }) {
       </p>
       <Button
         variant="outline"
-        className="auth-social"
+        className={authStyles['auth-social']}
         onClick={() => continuePreview(true)}
       >
         Continue with Google
       </Button>
       <Button
         variant="outline"
-        className="auth-social"
+        className={authStyles['auth-social']}
         onClick={() => continuePreview(true)}
       >
         Continue with Microsoft
@@ -50,9 +51,9 @@ export default function SignUpForm({ signIn = false }: { signIn?: boolean }) {
           e.preventDefault();
           continuePreview();
         }}
-        className="form-stack auth-form"
+        className={`${authStyles['form-stack']} ${authStyles['auth-form']}`}
       >
-        <div className="form-field">
+        <div className={authStyles['form-field']}>
           <Label htmlFor="auth-email">Email address</Label>
           <Input
             id="auth-email"
@@ -64,7 +65,7 @@ export default function SignUpForm({ signIn = false }: { signIn?: boolean }) {
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-        <div className="form-field">
+        <div className={authStyles['form-field']}>
           <Label htmlFor="auth-password">Password</Label>
           <Input
             id="auth-password"
@@ -75,17 +76,17 @@ export default function SignUpForm({ signIn = false }: { signIn?: boolean }) {
             placeholder="••••••••••••"
           />
         </div>
-        <Button className="auth-submit" type="submit">
+        <Button className={authStyles['auth-submit']} type="submit">
           {signIn ? 'Sign in' : 'Create account'} →
         </Button>
       </form>
-      <p className="auth-switch">
+      <p className={authStyles['auth-switch']}>
         {signIn ? 'New to Inbox Zero? ' : 'Already have an account? '}
         <Link href={signIn ? '/auth/sign-up' : '/auth/sign-in'}>
           {signIn ? 'Create an account' : 'Sign in'}
         </Link>
       </p>
-      <p className="auth-caption">
+      <p className={authStyles['auth-caption']}>
         Clerk authentication concept · Demo navigation
       </p>
     </>
