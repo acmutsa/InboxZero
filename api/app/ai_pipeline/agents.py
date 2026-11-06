@@ -1,26 +1,27 @@
-from api.app.ai_pipeline.tools import add,multiply
+from tools import add,multiply
 from langchain.agents import create_agent
-mul_filename = "prompts/email_drafting.md"
-add_filename = "prompts/email_binning.md"
+draft_filename = "prompts/email_drafting.md"
+bin_filename = "prompts/email_binning.md"
 
 
 
 def read_md(filename):
     with open(filename, 'r', encoding='utf-8') as f:
         phrase = f.read()
-        print(phrase)
+        #print(phrase)
         return f.read()
 
 
-agent_add = create_agent(
+agent_bin = create_agent(
     model="google_genai:gemini-3.5-flash-lite",
     tools=[add],
-    system_prompt=read_md(add_filename)
+    system_prompt=read_md(bin_filename)
 )
-agent_mul = create_agent(
+agent_draft = create_agent(
     model="google_genai:gemini-3.5-flash-lite",
     tools=[multiply],
-    system_prompt=read_md(mul_filename),
+    system_prompt=read_md(draft_filename),
 )
+
 
 

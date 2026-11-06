@@ -1,9 +1,11 @@
-from api.app.ai_pipeline.states import CalcState
+from states import EmailState
 from langchain.agents import create_agent
 from langgraph.graph import StateGraph, START, END
-from api.app.ai_pipeline.agents import agent_add,agent_mul
-from api.app.ai_pipeline.nodes import add_node,mul_node
+from agents import agent_bin,agent_draft
+from nodes import ai_draft_node,ai_bin_node,code_check_node,route_after_code_node,handle_failure
 
+from fake_gmail import FAKE_GMAIL_MESSAGE, make_mock_service,get_body
+from unittest.mock import Mock
 
 
 # import time
@@ -16,25 +18,71 @@ from api.app.ai_pipeline.nodes import add_node,mul_node
 # print(response.content)
 # print(f"Elapsed: {elapsed:.3f}s")
 
+mock_service = Mock()
+#print(message)
 
-g = StateGraph(CalcState)
-g.add_node("add", add_node)
-g.add_node("mul", mul_node)
-g.add_edge(START, "add")
-g.add_edge("add", "mul")
-g.add_edge("mul", END)
+email: EmailState
+
+
+g = StateGraph(EmailState)
+
+g.add_node("code_check",code_check_node)
+g.add_node("handle_failure",handle_failure)
+
+g.add_edge(START,"code_check")
+
+g.add_conditional_edges(
+    "code_check",
+    "route_after_code",
+    {
+        "Success":NEXT,
+        "Error": "handle_failure",
+    },
+
+
+
+)
+
+g.add_edge("handle_failure",END)
+
+# g.add_node("draft", ai_draft_node)
+# g.add_node("bin", ai_bin_node)
+# g.add_edge(START, "bin")
+# g.add_edge("bin", "draft")
+# g.add_edge("draft", END)
+
+# graph.add_conditional_edges(
+#     "parse_output",          # after this node...
+#     route_after_parse,       # ...run this function...
+#     {                        # ...and map its answer to the next node
+#         "success": END,
+#         "retry": "call_model",
+#         "give_up": "handle_failure",
+#     },
+# )
+
+# graph.add_edge("handle_failure", END)
+
+
+
+
+
+
 app = g.compile()
 
-
-num1 = input("First number: ")
-num2 = input("Second number: ")
-num3 = input("Multiply by: ")
+mock_service.users().messages().get().execute.return_value = FAKE_GMAIL_MESSAGE
+message = mock_service.users().messages().get().execute()
+headers = {h["name"]: h["value"] for h in message["payload"]["headers"]}
+label_ids = message.get("labelIds", [])
 
 result = app.invoke({
-    "request": f"Add {num1} and {num2}",
-    "mul_context": num3,
+    "label_ids" : label_ids,
+    "headers": headers,
+    "body": get_body(message) or "",
+    "raw_output": None,
+    "parsed": None,
+    "error": None,
+    "attempts": 0,
 })
 
-
-
-print(result["result"])
+print(result["header_from"])
