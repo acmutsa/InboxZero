@@ -48,3 +48,5 @@ __pycache__/
 
 #test
 test/
+# Local VS Code settings
+.vscode/

@@ -78,3 +78,4 @@ psycopg[binary]==3.3.6
 PyJWT==2.12.1
 pytest==9.0.3
 psycopg[binary]
+httpx2

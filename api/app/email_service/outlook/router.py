@@ -3,19 +3,19 @@ import secrets
 import time
 import requests
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    status,
-)
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth.jwt import decode
 from app.models.decoded_jwt import DecodedJWT
 from app.models.autorization_url import AuthorizationUrl
 
 from app.email_service.outlook.oauth import MicrosoftOAuth
+from app.email_service.outlook.account_store import (
+    InMemoryOutlookAccountStore,
+)
+from app.email_service.outlook.connection_service import (
+    OutlookConnectionService,
+)
 
 
 auth_outlook_router = APIRouter(
@@ -23,15 +23,20 @@ auth_outlook_router = APIRouter(
     tags=["outlook-connect"],
 )
 
-# Temporary local-development storage.
-# Replace with a shared store and database token cache.
+# Development-only storage.
+# Replace with shared storage before production deployment.
 pending_logins = {}
-connected_accounts = {}
+
+account_store = InMemoryOutlookAccountStore()
 
 
-class OutlookCallbackRequest(BaseModel):
-    state: str
-    code: str
+def get_connection_service(
+    oauth: MicrosoftOAuth = Depends(MicrosoftOAuth),
+):
+    return OutlookConnectionService(
+        store=account_store,
+        oauth=oauth,
+    )
 
 
 @auth_outlook_router.post(
@@ -56,14 +61,15 @@ def connect_outlook(
     )
 
 
-
 @auth_outlook_router.get("/callback")
 def callback(
     code: str,
     state: str,
-    oauth: MicrosoftOAuth = Depends(MicrosoftOAuth),
+    service: OutlookConnectionService = Depends(
+        get_connection_service
+    ),
 ):
-    # Validate and consume the saved OAuth state
+    # Consume the OAuth state exactly once.
     login = pending_logins.pop(state, None)
 
     if not login:
@@ -81,12 +87,12 @@ def callback(
     user_id = login["user_id"]
 
     try:
-        result = oauth.exchange_code(code)
-        email = oauth.get_verified_email(
-            result["access_token"]
+        result = service.connect(
+            user_id=user_id,
+            code=code,
         )
 
-    except (RuntimeError, ValueError) as error:
+    except (RuntimeError, ValueError, KeyError) as error:
         raise HTTPException(
             status_code=400,
             detail="Microsoft authentication failed",
@@ -98,17 +104,8 @@ def callback(
             detail="Microsoft account verification failed",
         ) from error
 
-    # Temporary development-only storage
-    connected_accounts[user_id] = {
-        "email": email,
-        "access_token": result["access_token"],
-        "expires_at": time.time() + result.get(
-            "expires_in", 3600
-        ),
-    }
-
     return {
         "status": "success",
         "message": "Outlook account connected",
-        "email": email,
+        "email": result["email"],
     }
