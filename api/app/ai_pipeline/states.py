@@ -1,7 +1,10 @@
 from typing_extensions import TypedDict
 
-class CalcState(TypedDict):
-
-    request: str       # the original request
-    result: str        # latest result (add step, then overwritten by multiply)
-    mul_context: str   # number to multiply by
+class EmailState(TypedDict):
+    label_ids: list[str]        # was str
+    header: dict
+    body: str
+    raw_output: str | None      # was str
+    parsed: dict | None
+    error: str | None
+    attempts: int
