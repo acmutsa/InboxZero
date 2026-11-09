@@ -9,7 +9,7 @@ from app.db.schema import Subscription
 from app.db.schema import User
 
 
-def get_user_by_clerk_id(
+def user_find_one_by_clerk_id(
     db: Session, 
     clerk_id: str
 ) -> User | None:
