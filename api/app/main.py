@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from fastapi import Depends
 from fastapi import FastAPI
@@ -15,10 +16,18 @@ from app.db.session import get_db
 from app.middleware.cors import add_cors_middleware
 from app.email_service.gmail.router import auth_gmail_router
 from app.models.decoded_jwt import DecodedJWT
+from app.models.email_account_response import EmailAccountResponse
 from app.models.register_user_request import RegisterUserRequest
+from app.models.update_user_request import UpdateUserRequest
 from app.models.user_response import UserResponse
 from app.repositories.category import create_default_categories
+from app.repositories.email_account import disconnect_email_account
+from app.repositories.email_account import email_account_find_one_by_id
+from app.repositories.email_account import email_accounts_find_all_by_user
 from app.repositories.user import create_user
+from app.repositories.user import delete_user
+from app.repositories.user import update_user
+from app.repositories.user import user_find_one_by_clerk_id
 
 app = FastAPI()
 add_cors_middleware(app)
@@ -42,11 +51,11 @@ def health():
     return {"status": "ok"}
 
 @app.post(
-    "/api/users/register",
+    "/api/users/create",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def register(
+def create_user_endpoint(
     body: RegisterUserRequest,
     decoded_jwt: DecodedJWT = Depends(decode),
     db: Session = Depends(get_db),
@@ -70,50 +79,57 @@ def register(
 
     return user
 
-# @app.get("/api/users/find")
-# def findProfile():
-#     return {"Current user": "profile"}
+@app.get(
+    "/api/users/find",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+)
+def find_user_endpoint(
+    decoded_jwt: DecodedJWT = Depends(decode),
+    db: Session = Depends(get_db),
+):
+    try:
+        user = user_find_one_by_clerk_id(db, decoded_jwt.user_id)
 
-# # Email account endpoints
-# @app.get("/api/accounts")
-# def emailList():
-#     return {"Email list status": "ok"}
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
+            )
 
-# @app.delete("/api/accounts/{account_id}")
-# def deleteAccount(account_id: str):
-#     return {"Account deleted": account_id}
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve account. Please try again later.",
+        )
 
-# # Stats endpoint
-# @app.get("/api/accounts/{account_id}/stats/categories")
-# def statsCategories():
-#     return {"Emails grouped by category": "ok"}
+    return user
 
-# @app.get("/api/accounts/{account_id}/stats/drafts")
-# def emailDrafts():
-#     return {"Emails needing drafts": "ok"}
+@app.patch(
+    "/api/users/update",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+)
+def update_user_endpoint(
+    body: UpdateUserRequest,
+    decoded_jwt: DecodedJWT = Depends(decode),
+    db: Session = Depends(get_db),
+):
+    try:
+        user = user_find_one_by_clerk_id(db, decoded_jwt.user_id)
 
-# @app.delete(
-#     "/disconnect-gmail/{user_id}",
-#     status_code=status.HTTP_204_NO_CONTENT,
-# )
-# def disconnect_email(
-#     user_id: int,
-#     decoded_jwt: DecodedJWT = Depends(decode),
-#     db: Session = Depends(get_db)
-# ):
-#     user_id = decoded_jwt.user_id
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
+            )
+        
+        user = update_user(db, user, body.first_name, body.last_name)
+        db.commit()
 
-#     try:
-#         pass
-#         #db connection and retrieval logic here
-#     except SQLAlchemyError:
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve Gmail account. Please try again later.",
-#         )
-#     if account is None or account.user_id != user_id:
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND, detail="Gmail account not found.",
-#         )
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update account. Please try again later.",
+        )
 
 #     try:
 #         pass
