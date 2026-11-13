@@ -10,7 +10,7 @@ from google.auth.transport.requests import AuthorizedSession
 from google.oauth2.credentials import Credentials
 from sqlalchemy.orm import Session
 
-from app.auth import token_encryption
+from app.auth.refresh_token import decrypt
 from app.config import config
 from app.db.schema import EmailAccount
 from app.db.session import SessionLocal
@@ -48,8 +48,8 @@ class GmailTokenManager:
             raise GmailServiceError("This Gmail account has no stored tokens. Please connect Gmail again.", status_code=401)
 
         return CredentialsWithRefreshHook(
-            token=token_encryption.decrypt(account.token.authentication_token),
-            refresh_token=token_encryption.decrypt(account.token.refresh_token),
+            token=decrypt(account.token.authentication_token),
+            refresh_token=decrypt(account.token.refresh_token),
             token_uri=config.GOOGLE_TOKEN_URI,
             client_id=config.GOOGLE_CLIENT_ID,
             client_secret=config.GOOGLE_CLIENT_SECRET,
@@ -69,7 +69,7 @@ class GmailTokenManager:
                 if account.token is None: 
                     return
 
-                stored_refresh_token = token_encryption.decrypt(account.token.refresh_token)
+                stored_refresh_token = decrypt(account.token.refresh_token)
                 new_refresh_token = self.credentials.refresh_token if self.credentials.refresh_token != stored_refresh_token else None
 
                 update_tokens(db, account, authentication_token=self.credentials.token, expires_at=self._to_aware_utc(self.credentials.expiry), refresh_token=new_refresh_token)
