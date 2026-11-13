@@ -1,9 +1,11 @@
 import base64
-import Iterator
-import datetime
-import timezone
-import Literal
+
+from collections.abc import Iterator
+from datetime import datetime
+from datetime import timezone
+from typing import Literal
 from typing import Optional
+
 from pydantic import BaseModel
 
 class MessageHeader(BaseModel):

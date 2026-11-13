@@ -41,6 +41,12 @@ from app.email_service.gmail.types.thread import Thread
 from app.email_service.gmail.types.thread import ThreadListRequest
 from app.email_service.gmail.types.thread import ThreadRequest
 
+from app.email_service.gmail.types.watch import WatchRequest
+from app.email_service.gmail.types.watch import WatchResponse
+
+from app.email_service.gmail.types.history import HistoryListRequest
+from app.email_service.gmail.types.history import HistoryList
+
 BASE_URL = "https://gmail.googleapis.com/gmail/v1/users/me"
 MAX_PAGE_SIZE = 500
 
@@ -103,6 +109,12 @@ class GmailService:
     # Profile
     def get_profile(self) -> Profile:
         return Profile.model_validate(self._get("/profile"))
+
+    def watch(self, watchRequest: WatchRequest) -> WatchResponse:
+        return WatchResponse.model_validate(self._post("/watch", body=watchRequest.model_dump(exclude_none=True)))
+
+    def stop(self) -> None:
+        self._post("/stop")
 
 
     # Labels
@@ -175,4 +187,15 @@ class GmailService:
 
     def delete_draft(self, draft_id: str) -> None:
         self._delete(f"/drafts/{draft_id}")
+
+    # History
+    def list_history(self, historyListRequest: HistoryListRequest) -> HistoryList:
+        params = {
+            "startHistoryId": historyListRequest.startHistoryId,
+            "historyTypes": historyListRequest.historyTypes,
+            "labelId": historyListRequest.labelId,
+            "maxResults": min(MAX_PAGE_SIZE, historyListRequest.maxResults),
+            "pageToken": historyListRequest.pageToken,
+        }
+        return HistoryList.model_validate(self._get("/history", params))
 
