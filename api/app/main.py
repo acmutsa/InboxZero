@@ -1,12 +1,13 @@
 import logging
 import uuid
+from contextlib import asynccontextmanager
+
+from arq import create_pool
 
 from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import status
-from fastapi import Request
-from fastapi.middleware.cors import CORSMiddleware
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import SQLAlchemyError
@@ -22,6 +23,7 @@ from app.models.email_account_response import EmailAccountResponse
 from app.models.register_user_request import RegisterUserRequest
 from app.models.update_user_request import UpdateUserRequest
 from app.models.user_response import UserResponse
+from app.queue.redis import get_redis_settings
 from app.repositories.category import create_default_categories
 from app.repositories.email_account import email_account_disconnect
 from app.repositories.email_account import email_account_find_one_by_id
@@ -30,12 +32,6 @@ from app.repositories.user import create_user
 from app.repositories.user import delete_user
 from app.repositories.user import update_user
 from app.repositories.user import user_find_one_by_clerk_id
-
-from contextlib import asynccontextmanager
-from arq import create_pool
-from pydantic import BaseModel
-from app.queue.redis import get_redis_settings
-
 
 logger = logging.getLogger(__name__)
 
@@ -57,19 +53,6 @@ app = FastAPI(lifespan=lifespan)
 add_cors_middleware(app)
 app.include_router(auth_gmail_router)
 app.include_router(webhook_gmail_router)
-logger = logging.getLogger(__name__)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=get_settings().cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.add_exception_handler(EmailServiceError, email_service_error_handler)
-app.include_router(gmail_auth_router)
-app.include_router(gmail_router)
 
 @app.get("/health")
 def health():
@@ -157,37 +140,6 @@ def update_user_endpoint(
         )
 
     return user
-
-
-class EmailJobRequest(BaseModel):
-    account_id: str
-    message_id: str
-
-
-@app.post("/api/queue/process-email")
-async def enqueue_email_job(
-    payload: EmailJobRequest,
-    request: Request
-):
-    job_id = f"email:{payload.account_id}:{payload.message_id}"
-
-    job = await request.app.state.redis.enqueue_job(
-        "process_email_job",
-        payload.account_id,
-        payload.message_id,
-        _job_id=job_id
-    )
-
-    if job is None:
-        return {
-            "status": "already_enqueued",
-            "job_id": job_id
-        }
-
-    return {
-        "status": "enqueued",
-        "job_id": job.job_id
-    }
 
 
 @app.delete(
