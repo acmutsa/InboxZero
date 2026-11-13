@@ -56,11 +56,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 add_cors_middleware(app)
 app.include_router(auth_gmail_router)
-<<<<<<< HEAD
 app.include_router(webhook_gmail_router)
 logger = logging.getLogger(__name__)
-=======
->>>>>>> bcf565e (Implement ARQ queue with retries and dead-letter handling)
 
 app.add_middleware(
     CORSMiddleware,
@@ -145,7 +142,6 @@ def update_user_endpoint(
     try:
         user = user_find_one_by_clerk_id(db, decoded_jwt.user_id)
 
-<<<<<<< HEAD
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
@@ -153,7 +149,15 @@ def update_user_endpoint(
         
         user = update_user(db, user, body.first_name, body.last_name)
         db.commit()
-=======
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update account. Please try again later.",
+        )
+
+    return user
+
 
 class EmailJobRequest(BaseModel):
     account_id: str
@@ -185,27 +189,6 @@ async def enqueue_email_job(
         "job_id": job.job_id
     }
 
-
-
-# @app.delete(
-#     "/disconnect-gmail/{user_id}",
-#     status_code=status.HTTP_204_NO_CONTENT,
-# )
-# def disconnect_email(
-#     user_id: int,
-#     decoded_jwt: DecodedJWT = Depends(decode),
-#     db: Session = Depends(get_db)
-# ):
-#     user_id = decoded_jwt.user_id
->>>>>>> bcf565e (Implement ARQ queue with retries and dead-letter handling)
-
-    except SQLAlchemyError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update account. Please try again later.",
-        )
-
-    return user
 
 @app.delete(
     "/api/users/delete",
