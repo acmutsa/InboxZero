@@ -1,22 +1,23 @@
+import asyncio
 import json
+import logging
 from datetime import datetime, timezone
 
 from app.queue.redis import get_redis_settings
 from arq import Retry
 from app.workflows.email_processing import process_email
 
-async def test_job(ctx, name: str):
-    print(f"Processing job for: {name}")
+logger = logging.getLogger(__name__)
 
-    return {
-        "status": "completed",
-        "name": name
-    }
+MAX_ATTEMPTS = 3
+RETRY_DELAYS = [1, 2]
+EMAIL_PROCESSING_TIMEOUT = 30
 
 async def process_email_job(ctx, account_id: str, message_id: str):
 
     try:
-        result = await process_email(account_id, message_id)
+        async with asyncio.timeout(EMAIL_PROCESSING_TIMEOUT):
+            result = await process_email(account_id, message_id)
 
         return {
             "status": "completed",
@@ -28,9 +29,9 @@ async def process_email_job(ctx, account_id: str, message_id: str):
     except Exception as e:
         job_try = ctx["job_try"]
 
-        if job_try < 3:
-            delay = 2 ** (job_try - 1)
-            print(f"Email processing failed. Retrying in {delay} seconds...")
+        if job_try < MAX_ATTEMPTS:
+            delay = RETRY_DELAYS[job_try - 1]
+            logger.warning(f"Email processing failed. Retrying in {delay} seconds...")
             raise Retry(defer=delay)
 
         dead_letter = {
@@ -48,12 +49,12 @@ async def process_email_job(ctx, account_id: str, message_id: str):
             json.dumps(dead_letter)
         )
 
-        print(f"Email moved to dead-letter list: {ctx['job_id']}")
+        logger.error(f"Email moved to dead-letter list: {ctx['job_id']}")
 
         raise
 
 class WorkerSettings:
-    functions = [test_job, process_email_job]
+    functions = [process_email_job]
     
     redis_settings = get_redis_settings()
-    max_tries = 3
+    max_tries = MAX_ATTEMPTS

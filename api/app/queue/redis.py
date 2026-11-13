@@ -1,15 +1,12 @@
-import os
 from urllib.parse import urlparse
 
 from arq.connections import RedisSettings
 
+from app.config import config
+
 
 def get_redis_settings() -> RedisSettings:
-    redis_url = os.getenv("REDIS_URL")
-
-    if not redis_url:
-        raise RuntimeError("REDIS_URL environment variable is not configured")
-
+    redis_url = config.REDIS_URL
     url = urlparse(redis_url)
 
     return RedisSettings(

@@ -155,91 +155,10 @@ def update_user_endpoint(
         db.commit()
 =======
 
-
-class TestJobRequest(BaseModel):
-    name: str
-
-class IdempotencyTestRequest(BaseModel):
-    account_id: str
-    message_id: str
-    name: str
-
 class EmailJobRequest(BaseModel):
     account_id: str
     message_id: str
 
-@app.post("/api/queue/test")
-async def enqueue_test_job(payload: TestJobRequest, request: Request):
-    job = await request.app.state.redis.enqueue_job(
-        "test_job",
-        payload.name
-    )
-
-    if job is None:
-        return {"status": "already_enqueued"}
-
-    return {
-        "status": "enqueued",
-        "job_id": job.job_id
-    }
-
-@app.post("/api/queue/retry-test")
-async def enqueue_retry_test(payload: TestJobRequest, request: Request):
-    job = await request.app.state.redis.enqueue_job(
-        "retry_test_job",
-        payload.name
-    )
-
-    if job is None:
-        return {"status": "already_enqueued"}
-
-    return {
-        "status": "enqueued",
-        "job_id": job.job_id
-    }
-
-@app.post("/api/queue/idempotency-test")
-async def enqueue_idempotency_test(
-    payload: IdempotencyTestRequest,
-    request: Request
-):
-    job_id = f"email:{payload.account_id}:{payload.message_id}"
-    
-    job = await request.app.state.redis.enqueue_job(
-        "retry_test_job",
-        payload.name,
-        _job_id=job_id
-    )
-
-    if job is None:
-        return {
-            "status": "already_enqueued",
-            "job_id": job_id
-        }
-
-    return {
-        "status": "enqueued",
-        "job_id": job.job_id
-    }
-
-
-@app.post("/api/queue/dead-letter-test")
-async def enqueue_dead_letter_test(
-    payload: TestJobRequest,
-    request: Request
-):
-    job = await request.app.state.redis.enqueue_job(
-        "dead_letter_test_job",
-        payload.name
-    )
-
-    if job is None:
-        return {"status": "already_enqueued"}
-
-    return {
-        "status": "enqueued",
-        "job_id": job.job_id
-    }
 
 @app.post("/api/queue/process-email")
 async def enqueue_email_job(
