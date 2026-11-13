@@ -10,3 +10,5 @@ class EmailAccountResponse(BaseModel):
     email_account: str
     provider: EmailServiceProvider
     created_at: datetime
+    gmail_history_id: str | None = None
+    gmail_watch_expires_at: datetime | None = None

@@ -71,7 +71,9 @@ class EmailAccount(Base):
     email_account: Mapped[str] = mapped_column(Text, nullable=False)
     provider: Mapped[EmailServiceProvider] = mapped_column(email_service_provider, nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    
+    gmail_history_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gmail_watch_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     user: Mapped[User] = relationship(back_populates="email_accounts")
     token: Mapped[EmailAccountToken | None] = relationship(back_populates="email_account", uselist=False, cascade="all, delete-orphan", passive_deletes=True)
     emails: Mapped[list[Email]] = relationship(back_populates="email_account", cascade="all, delete-orphan", passive_deletes=True)
