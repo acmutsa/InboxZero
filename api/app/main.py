@@ -1,8 +1,5 @@
 import logging
 import uuid
-from contextlib import asynccontextmanager
-
-from arq import create_pool
 
 from fastapi import Depends
 from fastapi import FastAPI
@@ -23,7 +20,6 @@ from app.models.email_account_response import EmailAccountResponse
 from app.models.register_user_request import RegisterUserRequest
 from app.models.update_user_request import UpdateUserRequest
 from app.models.user_response import UserResponse
-from app.queue.redis import get_redis_settings
 from app.repositories.category import create_default_categories
 from app.repositories.email_account import email_account_disconnect
 from app.repositories.email_account import email_account_find_one_by_id
@@ -35,21 +31,7 @@ from app.repositories.user import user_find_one_by_clerk_id
 
 logger = logging.getLogger(__name__)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    redis = await create_pool(get_redis_settings())
-    app.state.redis = redis
-
-    logger.info("Connected to Redis")
-
-    try:
-        yield
-    finally:
-        await redis.aclose()
-        logger.info("Disconnected from Redis")
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 add_cors_middleware(app)
 app.include_router(auth_gmail_router)
 app.include_router(webhook_gmail_router)

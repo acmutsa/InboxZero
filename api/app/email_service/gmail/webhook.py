@@ -2,7 +2,6 @@ import base64
 import binascii
 import json
 import logging
-import uuid
 
 from fastapi import APIRouter
 from fastapi import Depends
@@ -10,6 +9,9 @@ from fastapi import HTTPException
 from fastapi import status
 
 from pydantic import ValidationError
+
+from redis.exceptions import RedisError
+from rq import Queue
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -19,6 +21,8 @@ from app.db.schema import EmailServiceProvider
 from app.db.session import get_db
 from app.email_service.gmail.types.notification import GmailNotification
 from app.models.pubsub_push_request import PubSubPushRequest
+from app.queue.redis import enqueue_gmail
+from app.queue.redis import get_queue
 from app.repositories.email_account import email_account_find_one_active_by_email
 
 webhook_gmail_router = APIRouter(prefix="/webhooks", tags=["gmail-webhook"])
@@ -33,8 +37,7 @@ def gmail_push_notification(
     body: PubSubPushRequest,
     pubsub_token: None = Depends(pubsub_token.decrypt),
     db: Session = Depends(get_db),
-
-
+    queue: Queue = Depends(get_queue),
 ):
     notification = decode_gmail_notification(body)
 
@@ -56,8 +59,12 @@ def gmail_push_notification(
         logger.warning("Ignoring Gmail notification for an account that is not Gmail", extra={"pubsub_message_id": body.message.messageId, "account_id": str(account.id)})
         return
 
-    #enqueue_gmail_sync(account.id, notification.historyId)
+    try:
+        job_id = enqueue_gmail("jobs.sync_gmail_job", queue, account.id, notification.historyId)
 
+    except RedisError:
+        logger.exception("Could not enqueue Gmail sync", extra={"pubsub_message_id": body.message.messageId, "account_id": str(account.id)})
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Could not enqueue the Gmail notification.")
 
 def decode_gmail_notification(body: PubSubPushRequest) -> GmailNotification | None:
     if body.message.data is None:
