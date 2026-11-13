@@ -45,6 +45,7 @@ class Config(BaseSettings):
     GOOGLE_STATE_SECRET: Secret32
     GOOGLE_STATE_EXPIRE_SECONDS: int = 600
     GOOGLE_REFRESH_TOKEN_SECRET: Secret32
+    GMAIL_TIMEOUT_SECONDS: Annotated[float, Field(gt=0)] = 30
 
     # app
     ENVIRONMENT: str = "development"
