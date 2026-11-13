@@ -5,7 +5,6 @@ from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import status
-from fastapi.middleware.cors import CORSMiddleware
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import SQLAlchemyError
@@ -30,23 +29,12 @@ from app.repositories.user import delete_user
 from app.repositories.user import update_user
 from app.repositories.user import user_find_one_by_clerk_id
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 add_cors_middleware(app)
 app.include_router(auth_gmail_router)
 app.include_router(webhook_gmail_router)
-logger = logging.getLogger(__name__)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=get_settings().cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.add_exception_handler(EmailServiceError, email_service_error_handler)
-app.include_router(gmail_auth_router)
-app.include_router(gmail_router)
 
 @app.get("/health")
 def health():
@@ -134,6 +122,7 @@ def update_user_endpoint(
         )
 
     return user
+
 
 @app.delete(
     "/api/users/delete",

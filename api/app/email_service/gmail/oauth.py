@@ -8,10 +8,6 @@ from app.config import config
 
 class GoogleOAuth:
 
-class GoogleOAuth:
-
-class GoogleOAuth:
-
     def _get_flow(self, state: str) -> Flow:
         flow = Flow.from_client_config(
             config.get_google_client_config,
