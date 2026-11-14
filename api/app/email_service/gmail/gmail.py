@@ -22,10 +22,10 @@ from app.email_service.gmail.types.label import LabelList
 from app.email_service.gmail.types.label import Label
 from app.email_service.gmail.types.label import LablelCreateRequest
 
-from app.email_service.gmail.types.message_list import MessageListRequest
+from app.email_service.gmail.types.message_list_request import MessageListRequest
 from app.email_service.gmail.types.message_list import MessageList
-from app.email_service.gmail.types.message import MessageRequest
-from app.email_service.gmail.types.message import MessageModifyRequest
+from app.email_service.gmail.types.message_request import MessageRequest
+from app.email_service.gmail.types.message_modify_request import MessageModifyRequest
 from app.email_service.gmail.types.message import MessageBody
 from app.email_service.gmail.types.message import MessagePart
 from app.email_service.gmail.types.message import Message
@@ -155,14 +155,14 @@ class GmailService:
         return body.data 
 
     # Threads
-    def get_threads(self, threadListRequest:ThreadListRequest) -> ThreadListResponse:
+    def get_threads(self, threadListRequest:ThreadListRequest) -> ThreadList:
         params = {
             "q": threadListRequest.q,
             "labelIds": threadListRequest.labelIds,
             "maxResults": min(MAX_PAGE_SIZE, threadListRequest.maxResults),
             "pageToken": threadListRequest.pageToken,
         }
-        return ThreadListResponse.model_validate(self._get("/threads", params))
+        return ThreadList.model_validate(self._get("/threads", params))
 
     def get_thread(self, threadRequest:ThreadRequest) -> Thread:
         params = {
@@ -171,19 +171,19 @@ class GmailService:
         return Thread.model_validate(self._get(f"/threads/{threadRequest.id}", params))
 
     # Drafts
-    def get_drafts(self, draftListRequest:DraftListRequest) -> DraftListResponse:
+    def get_drafts(self, draftListRequest:DraftListRequest) -> DraftList:
         params = {
             "q": draftListRequest.q,
             "maxResults": min(MAX_PAGE_SIZE, draftListRequest.maxResults),
             "pageToken": draftListRequest.pageToken,
         }
-        return DraftListResponse.model_validate(self._get("/drafts", params))
+        return DraftList.model_validate(self._get("/drafts", params))
 
-    def get_draft(self, draftRequest:DraftRequest) -> DraftResponse:
-        return DraftResponse.model_validate(self._get(f"/drafts/{draftRequest.id}", {"format": draftRequest.format}))
+    def get_draft(self, draftRequest:DraftRequest) -> Draft:
+        return Draft.model_validate(self._get(f"/drafts/{draftRequest.id}", {"format": draftRequest.format}))
 
-    def post_draft(self, draftCreateRequest:DraftCreateRequest) -> DraftResponse:
-        return DraftResponse.model_validate(self._post("/drafts", body=draftCreateRequest.model_dump(exclude_unset=True)))
+    def post_draft(self, draftCreateRequest:DraftCreateRequest) -> Draft:
+        return Draft.model_validate(self._post("/drafts", body=draftCreateRequest.model_dump(exclude_unset=True)))
 
     def delete_draft(self, draft_id: str) -> None:
         self._delete(f"/drafts/{draft_id}")

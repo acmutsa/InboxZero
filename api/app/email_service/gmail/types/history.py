@@ -14,6 +14,9 @@ class HistoryListRequest(BaseModel):
     pageToken: Optional[str] = None
     maxResults: int = 100
 
+class HistoryMessageChange(BaseModel):
+    message: Message
+
 class HistoryLabelChange(BaseModel):
     message: Message
     labelIds: list[str] = []
@@ -21,8 +24,8 @@ class HistoryLabelChange(BaseModel):
 class History(BaseModel):
     id: str
     messages: list[Message] = []
-    messagesAdded: list[Message] = []
-    messagesDeleted: list[Message] = []
+    messagesAdded: list[HistoryMessageChange] = []
+    messagesDeleted: list[HistoryMessageChange] = []
     labelsAdded: list[HistoryLabelChange] = []
     labelsRemoved: list[HistoryLabelChange] = []
 

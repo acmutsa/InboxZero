@@ -60,7 +60,7 @@ def gmail_push_notification(
         return
 
     try:
-        job_id = enqueue_gmail("jobs.sync_gmail_job", queue, account.id, notification.historyId)
+        job_id = enqueue_gmail("app.jobs.gmail_sync.sync_gmail_job", queue, account.id, notification.historyId)
 
     except RedisError:
         logger.exception("Could not enqueue Gmail sync", extra={"pubsub_message_id": body.message.messageId, "account_id": str(account.id)})
