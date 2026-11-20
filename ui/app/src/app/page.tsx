@@ -1,44 +1,31 @@
-import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
-import Grainient from "@/components/Grainient";
+import Link from 'next/link';
+import GlassIcon from '@/components/GlassIcon';
+import { ArrowDown, ArrowUpRight, Check, FilePenLine, Link2, ShieldCheck } from 'lucide-react';
+import LandingInboxPreview from '@/components/LandingInboxPreview';
+import Grainient from '@/components/Grainient';
+import FloatingNavbar from '@/components/FloatingNavbar';
+import SiteFooter from '@/components/SiteFooter';
+import { Section } from '@/components/ui/Section';
+import { Card } from '@/components/ui/card';
+import landingStyles from '@/app/page.module.css';
+
+const steps = [
+  { title: 'Connect', copy: 'Bring your Gmail and Outlook accounts into one workspace.', icon: Link2 },
+  { title: 'Review', copy: 'Find sorted messages and suggested replies ready for a look.', icon: FilePenLine },
+  { title: 'Approve', copy: 'Make an edit or give the final okay. Every reply is your call.', icon: Check },
+];
+const services = [
+  ['ORGANIZE', 'Find what matters.', 'Keep important messages in view and everyday noise in its place.'],
+  ['RESPOND', 'Start with a draft.', 'Review a suggested reply instead of starting from a blank page.'],
+  ['SCHEDULE', 'Make room to meet.', 'Calendar context helps you review scheduling replies with confidence.'],
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col bg-[#030711] text-white">
-      {/* Nav */}
-      <header className="fixed inset-x-0 top-0 z-20 border-b border-white/10 bg-[#030711]/60 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <span className="text-sm font-semibold tracking-tight text-white">
-            Inbox Zero
-          </span>
-          <div className="flex items-center gap-3">
-            <Show when="signed-out">
-              <SignInButton>
-                <button className="rounded-full px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:text-white">
-                  Sign in
-                </button>
-              </SignInButton>
-              <SignUpButton>
-                <button className="rounded-full bg-white px-4 py-2 text-sm font-medium text-[#030711] transition-colors hover:bg-sky-100">
-                  Get started
-                </button>
-              </SignUpButton>
-            </Show>
-            <Show when="signed-in">
-              <a
-                href="/profile"
-                className="rounded-full px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:text-white"
-              >
-                Profile
-              </a>
-              <UserButton />
-            </Show>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 z-0">
+    <main className="landing">
+      <FloatingNavbar />
+      <section id="home" className={landingStyles['hero']} aria-labelledby="hero-title">
+        <div className={landingStyles['hero-background']} aria-hidden="true">
           <Grainient
             timeSpeed={1.5}
             grainAmount={0.06}
