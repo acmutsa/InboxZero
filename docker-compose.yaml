@@ -77,6 +77,33 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - DATABASE_URL=${DATABASE_URL}
 
+  # AI pipeline worker: same image as `api`, runs the RQ worker instead of uvicorn.
+  pipeline:
+    build: ./api
+    command: ["python", "-m", "app.worker"]
+    volumes:
+      - ./api:/app # must match WORKDIR in api/Dockerfile
+    networks:
+      - inbox-zero-network
+    env_file: .env
+    environment:
+      # Override .env's `localhost` values: inside a container, other
+      # services are reached by their service name on the compose network.
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379/0
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_URL=postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - PYTHONUNBUFFERED=1 # show print/log output immediately in `docker compose logs`
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 30s # let an in-flight job finish on shutdown
+
 volumes:
   redis-data:
   postgres-data:

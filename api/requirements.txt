@@ -56,6 +56,8 @@ pydantic==2.13.5
 pydantic_core==2.46.5
 pyparsing==3.3.3
 psycopg[binary]==3.3.6
+redis==8.1.0
+rq
 requests==2.34.2
 requests-oauthlib==2.0.0
 starlette==1.6.0
