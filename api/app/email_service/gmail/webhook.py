@@ -23,7 +23,7 @@ from app.email_service.gmail.types.notification import GmailNotification
 from app.models.pubsub_push_request import PubSubPushRequest
 from app.queue.redis import enqueue_gmail
 from app.queue.redis import get_queue
-from app.repositories.email_account import email_account_find_one_active_by_email
+from app.repositories.email_account import email_account_find_one_by_email
 
 webhook_gmail_router = APIRouter(prefix="/webhooks", tags=["gmail-webhook"])
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ def gmail_push_notification(
         return
 
     try:
-        account = email_account_find_one_active_by_email(db, notification.emailAddress)
+        account = email_account_find_one_by_email(db, notification.emailAddress)
 
     except SQLAlchemyError:
         db.rollback()

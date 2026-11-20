@@ -1,40 +1,47 @@
-from states import EmailState
-from agents import agent_bin,agent_draft
+from app.ai_pipeline.states import EmailState
+from app.ai_pipeline.agents import agent_bin,agent_draft
+from app.ai_pipeline.llm_input import format_email_for_llm
+from app.ai_pipeline.thread_context import thread_skip_reason
 import re
 from email.utils import parseaddr
 
+# `context=` carries the user into the agents' prompt middleware, which fills
+# the {{user}} placeholders in the system prompt for this run.
+
 def ai_bin_node(state: EmailState):
-    out = agent_bin.invoke({"messages": [("user", state["request"])]})
-    #print(out)
-    return {"result": out["messages"][-1].text}
+    out = agent_bin.invoke({"messages": [("user", format_email_for_llm(state))]}, context=state["user"])
+    return {"raw_output": out["messages"][-1].text}
 
 def ai_draft_node(state: EmailState):
-    out = agent_draft.invoke(
-        {"messages": [("user",
-            f"Multiply {state['result']} by {state['mul_context']}.")]}
-    )
-    #print(out)
-    return {"result": out["messages"][-1].text}
+    out = agent_draft.invoke({"messages": [("user", format_email_for_llm(state))]}, context=state["user"])
+    return {"raw_output": out["messages"][-1].text}
 
 
 def code_check_node(state:EmailState):
-   
-    reason = skip_reason(state["label_ids"], state["headers"])
-    if reason:
-        return {"error": f"skipped: {reason}"}
+
+    # Gate 1: deterministic checks, before any LLM call
+    reason = (
+        skip_reason(state["label_ids"], state["headers"], my_email=state["user"].email)
+        or thread_skip_reason(state["thread"])
+    )
+    return {"skip_reason": reason}
+
+
+def record_skip(state: EmailState):
+    # A gate decided this email gets no reply. That's a normal outcome, not a failure.
+    print(f"Skipped: {state['skip_reason']}")
     return {}
-
-
-def route_after_code_node(state:EmailState):
-
-    if state["error"]:
-        return "Error"
-    return "Success"
 
 
 def handle_failure(state: EmailState):
     print(f"Failed at: {state['error']}")
     return {}
+
+def save_draft(state: EmailState):
+    # The graph has no database or Gmail access: `process_email` saves
+    # `draft_result` to the drafts table and to the user's Gmail after the graph returns.
+    return {}
+
 
 # Helper functions
 
@@ -56,10 +63,9 @@ def is_no_reply(header_from: str) -> bool:
 SKIP_LABELS = {"SPAM", "TRASH", "SENT", "CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_FORUMS"}
 AUTO_SUBJECTS = ("automatic reply", "out of office", "undeliverable",
                  "delivery status notification", "mail delivery failed", "auto:")
-MY_EMAIL = "you@example.com"
 
 
-def skip_reason(labels, headers: dict) -> str | None:
+def skip_reason(labels, headers: dict, my_email: str) -> str | None:
     """Return why an email should be skipped, or None if it looks fine to process."""
     labels = set(labels)
     h = {k.lower(): v for k, v in headers.items()}   # case-insensitive headers
@@ -68,7 +74,7 @@ def skip_reason(labels, headers: dict) -> str | None:
 
     if labels & SKIP_LABELS:
         return f"label: {', '.join(labels & SKIP_LABELS)}"
-    if sender == MY_EMAIL:
+    if sender == my_email.lower():
         return "sent by me"
     if is_no_reply(h.get("from", "")) or is_no_reply(h.get("reply-to", "")):
         return "no-reply sender"

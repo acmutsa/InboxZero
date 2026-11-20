@@ -11,11 +11,11 @@ class EmailService(ABC):
 
     # Labels
     @abstractmethod
-    def get_labels(self):
+    def get_labels(self) :
         pass
 
     @abstractmethod
-    def get_label(self):
+    def get_label(self) :
         pass
 
     @abstractmethod
@@ -23,25 +23,24 @@ class EmailService(ABC):
         pass
 
     @abstractmethod
-    def delete_label(self):
+    def delete_label(self) :
         pass
 
     # Messages
     @abstractmethod
-    def get_messages(self):
+    def get_messages(self) :
         pass
 
     @abstractmethod
     def get_message(self):
         pass
-
     @abstractmethod
-    def modify_message(self):
+    def modify_message(self) :
         pass
 
     # Threads
     @abstractmethod
-    def modify_thread(self):
+    def modify_thread(self) :
         pass
 
     # Drafts
@@ -55,4 +54,4 @@ class EmailService(ABC):
 
     @abstractmethod
     def create_draft(self):
-        pass
+        pass 

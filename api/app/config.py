@@ -66,6 +66,9 @@ class Config(BaseSettings):
     ALGORITHM: str = "HS256"
     SECRET_KEY: Secret32
     AUDIENCE: list[HttpUrl]
+
+    #api
+    GEMINI_MODEL: str
     
 
     model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8")
