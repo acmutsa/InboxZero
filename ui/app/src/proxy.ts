@@ -5,6 +5,7 @@ import { demoMode } from '@/lib/auth-config';
 const isProtectedRoute = createRouteMatcher([
   "/profile(.*)",
   "/registration(.*)",
+  "/auth/google(.*)",
 ]);
 
 export default demoMode ? () => NextResponse.next() : clerkMiddleware(async (auth, req) => {
