@@ -3,8 +3,16 @@ from pydantic import BaseModel
 
 from app.email_service.gmail.types.message import Message
 
-class DraftCreateRequest(BaseModel):                    
-    message: Message  
+class DraftMessage(BaseModel):
+    raw: str
+    threadId: Optional[str] = None
+
+class DraftCreateRequest(BaseModel):
+    message: DraftMessage
+
+class DraftUpdateRequest(BaseModel):
+    id: str
+    message: DraftMessage
 
 class DraftRequest(BaseModel):                    
     id: str

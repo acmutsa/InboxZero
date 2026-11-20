@@ -35,6 +35,8 @@ from app.email_service.gmail.types.draft import Draft
 from app.email_service.gmail.types.draft import DraftListRequest
 from app.email_service.gmail.types.draft import DraftRequest
 from app.email_service.gmail.types.draft import DraftCreateRequest
+from app.email_service.gmail.types.draft import DraftUpdateRequest
+
 
 from app.email_service.gmail.types.thread import ThreadList
 from app.email_service.gmail.types.thread import Thread
@@ -62,6 +64,9 @@ class GmailService:
 
     def _post(self, path: str, body: dict[str, Any] | None = None, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._request("POST", path, params=params, body=body)
+
+    def _put(self, path: str, body: dict[str, Any] | None = None, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self._request("PUT", path, params=params, body=body)
 
     def _delete(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._request("DELETE", path, params=params)
@@ -183,10 +188,14 @@ class GmailService:
         return Draft.model_validate(self._get(f"/drafts/{draftRequest.id}", {"format": draftRequest.format}))
 
     def post_draft(self, draftCreateRequest:DraftCreateRequest) -> Draft:
-        return Draft.model_validate(self._post("/drafts", body=draftCreateRequest.model_dump(exclude_unset=True)))
+        return Draft.model_validate(self._post("/drafts", body=draftCreateRequest.model_dump(exclude_none=True)))
 
     def delete_draft(self, draft_id: str) -> None:
         self._delete(f"/drafts/{draft_id}")
+
+    def update_draft(self, draft_id: str, request: DraftUpdateRequest) -> Draft:
+        body = request.model_dump(exclude_none=True)
+        return Draft.model_validate(self._put(f"/drafts/{draft_id}", body=body))
 
     # History
     def list_history(self, historyListRequest: HistoryListRequest) -> HistoryList:

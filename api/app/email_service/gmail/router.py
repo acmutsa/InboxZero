@@ -29,7 +29,7 @@ from app.db.session import get_db
 from app.email_service.gmail.oauth import GoogleOAuth
 
 from app.repositories.email_account import create_email_account
-from app.repositories.email_account import email_account_find_one_by_email
+from app.repositories.email_account import email_account_find_one_by_email_and_user_id
 from app.repositories.email_account_token import create_tokens
 from app.repositories.user import user_find_one_by_clerk_id
 
@@ -113,7 +113,7 @@ def callback(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
             )
         
-        email_account = email_account_find_one_by_email(db, email, user.id)
+        email_account = email_account_find_one_by_email_and_user_id(db, email, user.id)
 
         if email_account is not None:
             raise HTTPException(
