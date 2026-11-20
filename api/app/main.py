@@ -14,6 +14,8 @@ from app.auth.jwt import decode
 from app.db.session import get_db
 from app.middleware.cors import add_cors_middleware
 from app.email_service.gmail.router import auth_gmail_router
+from app.email_service.outlook.router import auth_outlook_router
+from app.email_service.outlook.email_router import outlook_email_router
 from app.email_service.gmail.webhook import webhook_gmail_router
 from app.models.decoded_jwt import DecodedJWT
 from app.models.email_account_response import EmailAccountResponse
@@ -35,6 +37,8 @@ app = FastAPI()
 add_cors_middleware(app)
 app.include_router(auth_gmail_router)
 app.include_router(webhook_gmail_router)
+app.include_router(auth_outlook_router)
+app.include_router(outlook_email_router)
 
 @app.get("/health")
 def health():
