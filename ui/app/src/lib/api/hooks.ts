@@ -7,7 +7,7 @@ import { ApiError, createApiClient, toApiError, type ApiClient } from "./api";
 
 // The backend verifies HS256 tokens with an `aud` claim, which Clerk's default
 // session token doesn't have, so requests use a Clerk JWT template instead.
-const JWT_TEMPLATE = process.env.NEXT_PUBLIC_CLERK_JWT_TEMPLATE || undefined;
+const JWT_TEMPLATE = process.env.NEXT_PUBLIC_CLERK_JWT_TEMPLATE || "inboxzero-api";
 
 /** API client bound to the signed-in user's Clerk session token. */
 export function useApi(): ApiClient {
