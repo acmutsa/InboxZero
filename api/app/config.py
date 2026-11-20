@@ -41,7 +41,7 @@ class Config(BaseSettings):
     GOOGLE_AUTH_PROVIDER_X509_CERT_URL: HttpUrlStr = "https://www.googleapis.com/oauth2/v1/certs"
     GOOGLE_REDIRECT_URIS: list[HttpUrl]
     GOOGLE_JAVASCRIPT_ORIGINS: list[HttpUrl]
-    GOOGLE_REDIRECT_URI: HttpUrlStr = "http://localhost:8000/auth/google/callback"
+    GOOGLE_REDIRECT_URI: HttpUrlStr = "http://localhost:3000/auth/google/callback"
     SCOPES: list[str]
     GOOGLE_STATE_SECRET: Secret32
     GOOGLE_STATE_EXPIRE_SECONDS: int = 600
