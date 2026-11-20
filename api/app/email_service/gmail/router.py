@@ -1,6 +1,8 @@
 import logging
 import requests
+import uuid
 
+from datetime import datetime
 from datetime import timezone
 
 from fastapi import APIRouter
@@ -26,10 +28,15 @@ from app.auth.jwt import decode
 from app.db.schema import EmailServiceProvider
 from app.db.session import get_db
 
+from app.email_service.gmail.calendar import GoogleCalendarService
 from app.email_service.gmail.oauth import GoogleOAuth
+from app.email_service.gmail.token_manager import GmailTokenManager
+from app.email_service.gmail.types.calendar_event import CalendarEvent
+from app.email_service.gmail.types.error import GmailServiceError
 
 from app.repositories.email_account import create_email_account
 from app.repositories.email_account import email_account_find_one_by_email
+from app.repositories.email_account import email_account_find_one_by_id
 from app.repositories.email_account_token import create_tokens
 from app.repositories.user import user_find_one_by_clerk_id
 
@@ -137,6 +144,31 @@ def callback(
         )
 
     return {
-        "email": email, 
+        "email": email,
         "connected": True
     }
+
+@auth_gmail_router.get(
+    "/calendar/events",
+    response_model=list[CalendarEvent],
+    status_code=status.HTTP_200_OK,
+)
+def list_calendar_events(
+    account_id: uuid.UUID,
+    time_min: datetime,
+    time_max: datetime,
+    decoded_jwt: DecodedJWT = Depends(decode),
+    db: Session = Depends(get_db),
+):
+    user = user_find_one_by_clerk_id(db, decoded_jwt.user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
+
+    account = email_account_find_one_by_id(db, account_id, user.id)
+    if account is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email account not found.")
+
+    try:
+        return GoogleCalendarService(GmailTokenManager(account)).list_events(time_min, time_max)
+    except GmailServiceError as error:
+        raise HTTPException(status_code=error.status_code or status.HTTP_502_BAD_GATEWAY, detail=str(error))
