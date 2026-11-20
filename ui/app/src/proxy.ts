@@ -2,7 +2,10 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
 import { demoMode } from '@/lib/auth-config';
 
-const isProtectedRoute = createRouteMatcher(["/profile(.*)"]);
+const isProtectedRoute = createRouteMatcher([
+  "/profile(.*)",
+  "/registration(.*)",
+]);
 
 export default demoMode ? () => NextResponse.next() : clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) await auth.protect();
