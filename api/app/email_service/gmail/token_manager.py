@@ -16,6 +16,7 @@ from app.db.schema import EmailAccount
 from app.db.session import SessionLocal
 from app.email_service.gmail.types.error import GmailServiceError
 from app.repositories.email_account_token import update_tokens
+from app.repositories.email_account import email_account_find_one_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class GmailTokenManager:
 
     def __init__(self, account: EmailAccount) -> None:
         self._account_id: uuid.UUID = account.id
+        self._user_id: uuid.UUID = account.user_id
         self.credentials: Credentials = self._build_credentials(account)
         self._http_session: AuthorizedSession | None = None
 
@@ -54,7 +56,7 @@ class GmailTokenManager:
             client_id=config.GOOGLE_CLIENT_ID,
             client_secret=config.GOOGLE_CLIENT_SECRET,
             scopes=config.SCOPES,
-            expiry=self._to_naive_utc(token.expires_at),
+            expiry=self._to_naive_utc(account.token.expires_at),
             on_refresh=self._save_tokens,
         )
 

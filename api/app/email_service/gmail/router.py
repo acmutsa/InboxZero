@@ -33,6 +33,7 @@ from app.email_service.gmail.oauth import GoogleOAuth
 from app.email_service.gmail.token_manager import GmailTokenManager
 from app.email_service.gmail.types.calendar_event import CalendarEvent
 from app.email_service.gmail.types.error import GmailServiceError
+from app.email_service.gmail.types.error import MissingScopesError
 
 from app.repositories.email_account import create_email_account
 from app.repositories.email_account import email_account_find_one_by_email
@@ -76,6 +77,11 @@ def callback(
 
     try:
         credentials = oauth.exchange_code(body.state, body.code)
+
+    except MissingScopesError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Gmail access wasn't granted. Please connect again and tick the box that allows access to your Gmail.",
+        )
 
     except InvalidGrantError:
         raise HTTPException(

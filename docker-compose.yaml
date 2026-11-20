@@ -17,9 +17,13 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./api:/usr/app  
+      - ./api:/usr/app
     networks:
       - inbox-zero-network
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - POSTGRES_URL=postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     env_file: .env
     depends_on:
       redis:
