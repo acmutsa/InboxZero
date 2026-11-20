@@ -11,15 +11,11 @@ from app.email_service.outlook.types.message import (
     MessageModifyRequest,
 )
 from app.email_service.outlook.types.label import LabelRequest
-
+from app.email_service.outlook.dependencies import get_outlook_service
 # Development-only dependency.
 # Replace with a database-backed, authenticated dependency
 # before registering this router in the main application.
-def get_outlook_service():
-    raise HTTPException(
-        status_code=503,
-        detail="Outlook account integration is not configured",
-    )
+
 
 
 outlook_email_router = APIRouter(

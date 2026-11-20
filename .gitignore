@@ -50,3 +50,6 @@ __pycache__/
 test/
 # Local VS Code settings
 .vscode/
+
+# Local Outlook tests
+/api/tests/test_outlook_*.py

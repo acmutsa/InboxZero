@@ -4,14 +4,16 @@ import time
 import requests
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from app.auth.jwt import decode
+from app.db.session import get_db
 from app.models.decoded_jwt import DecodedJWT
 from app.models.autorization_url import AuthorizationUrl
 
 from app.email_service.outlook.oauth import MicrosoftOAuth
-from app.email_service.outlook.account_store import (
-    InMemoryOutlookAccountStore,
+from app.email_service.outlook.database_store import (
+    DatabaseOutlookAccountStore,
 )
 from app.email_service.outlook.connection_service import (
     OutlookConnectionService,
@@ -23,18 +25,17 @@ auth_outlook_router = APIRouter(
     tags=["outlook-connect"],
 )
 
-# Development-only storage.
-# Replace with shared storage before production deployment.
+# Development-only OAuth state storage.
+# Production requires shared storage with expiration.
 pending_logins = {}
-
-account_store = InMemoryOutlookAccountStore()
 
 
 def get_connection_service(
+    db: Session = Depends(get_db),
     oauth: MicrosoftOAuth = Depends(MicrosoftOAuth),
 ):
     return OutlookConnectionService(
-        store=account_store,
+        store=DatabaseOutlookAccountStore(db),
         oauth=oauth,
     )
 
@@ -69,7 +70,7 @@ def callback(
         get_connection_service
     ),
 ):
-    # Consume the OAuth state exactly once.
+    # Consume OAuth state exactly once.
     login = pending_logins.pop(state, None)
 
     if not login:
