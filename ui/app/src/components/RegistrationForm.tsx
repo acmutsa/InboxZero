@@ -1,9 +1,10 @@
 'use client';
 
+import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { useSessionValue } from '@/hooks/useSessionValue';
-import { savePreviewValue } from '@/lib/preview';
+import { toApiError } from '@/lib/api/api';
+import { useApi } from '@/lib/api/hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,11 +12,33 @@ import authStyles from '@/components/AuthShell.module.css';
 
 export default function RegistrationForm() {
   const router = useRouter();
+  const api = useApi();
+  const { user } = useUser();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [editedEmail, setEmail] = useState<string | null>(null);
-  const savedEmail = useSessionValue('inboxzero-signup-email');
-  const email = editedEmail ?? savedEmail;
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const email = user?.primaryEmailAddress?.emailAddress ?? '';
+
+  async function register() {
+    setSubmitting(true);
+    setError('');
+    try {
+      await api.createUser({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+      });
+    } catch (caught) {
+      const apiError = toApiError(caught);
+      // 409 means this Clerk user is already registered.
+      if (apiError.status !== 409) {
+        setError(apiError.message);
+        setSubmitting(false);
+        return;
+      }
+    }
+    router.push('/profile');
+  }
 
   return (
     <>
@@ -28,15 +51,7 @@ export default function RegistrationForm() {
         className={authStyles['form-stack']}
         onSubmit={(e) => {
           e.preventDefault();
-          savePreviewValue(
-            'inboxzero-profile',
-            JSON.stringify({
-              firstName: firstName.trim(),
-              lastName: lastName.trim(),
-              email: email.trim(),
-            }),
-          );
-          router.push('/profile');
+          void register();
         }}
       >
         <div className={authStyles['form-field']}>
@@ -71,17 +86,21 @@ export default function RegistrationForm() {
             id="primary-email"
             type="email"
             autoComplete="email"
-            required
+            readOnly
             placeholder="maya@studio.dev"
             aria-describedby="email-hint"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
           />
-          <small id="email-hint">Pre-filled from your sign-up email.</small>
+          <small id="email-hint">From the account you signed up with.</small>
         </div>
         <small>* Required fields</small>
-        <Button className={authStyles['auth-submit']} type="submit">
-          Continue to my profile →
+        {error && <small role="alert">{error}</small>}
+        <Button
+          className={authStyles['auth-submit']}
+          type="submit"
+          disabled={submitting}
+        >
+          {submitting ? 'Saving…' : 'Continue to my profile →'}
         </Button>
       </form>
       <small>Your email accounts can be connected from your profile.</small>
