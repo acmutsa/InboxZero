@@ -1,20 +1,33 @@
-
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from .message import MessageRequest, MessageResponse
+from app.email_service.outlook.types.message import ItemBody
+from app.email_service.outlook.types.message import Message
+from app.email_service.outlook.types.message_request import MessageRequest
 
+class DraftEmailAddress(BaseModel):
+    address: EmailStr
+    name: Optional[str] = None
 
-class DraftRequest(BaseModel):
-    message: MessageRequest
+class DraftRecipient(BaseModel):
+    emailAddress: DraftEmailAddress
 
+class DraftCreateRequest(BaseModel):
+    subject: str
+    body: ItemBody
+    toRecipients: list[DraftRecipient] = []
+    ccRecipients: list[DraftRecipient] = []
+    bccRecipients: list[DraftRecipient] = []
 
-class DraftResponse(BaseModel):
-    id: str
-    message: Optional[MessageResponse] = None
+class DraftRequest(MessageRequest):
+    pass
 
+class Draft(Message):
+    pass
 
-class DraftListResponse(BaseModel):
-    drafts: list[DraftResponse] = Field(default_factory=list)
-    nextPageToken: Optional[str] = None
-    resultSizeEstimate: Optional[int] = None
+class DraftList(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    value: list[Draft] = []
+    nextLink: Optional[str] = Field(None, alias="@odata.nextLink")
+    count: Optional[int] = Field(None, alias="@odata.count")
