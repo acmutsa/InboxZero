@@ -16,6 +16,7 @@ from app.middleware.cors import add_cors_middleware
 from app.email_service.gmail.router import auth_gmail_router
 from app.email_service.outlook.router import auth_outlook_router
 from app.email_service.gmail.webhook import webhook_gmail_router
+from app.email_service.outlook.webhook import webhook_outlook_router
 from app.models.decoded_jwt import DecodedJWT
 from app.models.email_account_response import EmailAccountResponse
 from app.models.register_user_request import RegisterUserRequest
@@ -39,6 +40,7 @@ add_cors_middleware(app)
 app.include_router(auth_gmail_router)
 app.include_router(webhook_gmail_router)
 app.include_router(auth_outlook_router)
+app.include_router(webhook_outlook_router)
 
 @app.get("/health")
 def health():

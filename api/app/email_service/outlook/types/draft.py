@@ -23,7 +23,7 @@ class DraftRequest(MessageRequest):
     pass
 
 class DraftListRequest(BaseModel):
-    pass
+    top: int = 10
     
 class Draft(Message):
     pass

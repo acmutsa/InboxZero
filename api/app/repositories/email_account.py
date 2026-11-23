@@ -30,6 +30,12 @@ def email_account_find_one_by_id(
 ) -> EmailAccount | None:
     return db.scalar(select(EmailAccount).where(EmailAccount.id == email_id, EmailAccount.user_id == user_id, EmailAccount.deleted_at.is_(None)))
 
+def email_account_find_one_active_by_id(
+    db: Session,
+    account_id: uuid.UUID,
+) -> EmailAccount | None:
+    return db.scalar(select(EmailAccount).where(EmailAccount.id == account_id, EmailAccount.deleted_at.is_(None)))
+
 def email_accounts_find_all_by_user(
     db: Session,
     user_id: uuid.UUID
