@@ -1,329 +1,166 @@
-
 import requests
+
+from typing import Any
 from urllib.parse import quote
 
-from app.email_service.outlook.types.draft import (
-    DraftRequest,
-    DraftResponse,
-    DraftListResponse,
-)
-from app.email_service.outlook.types.label import (
-    LabelRequest,
-    LabelResponse,
-    LabelListResponse,
-    LabelColor,
-)
-from app.email_service.outlook.types.message import (
-    MessageRequest,
-    MessageResponse,
-    MessageModifyRequest,
-    MessageListResponse,
-)
-from app.email_service.outlook.types.profile import Profile
+from app.config import config
+from app.email_service.outlook.token_manager import OutlookTokenManager
+
 from app.email_service.outlook.types.error import OutlookServiceError
+from app.email_service.outlook.types.user import User
 
+from app.email_service.outlook.types.mail_folder import MailFolderList
+from app.email_service.outlook.types.mail_folder import MailFolder
+from app.email_service.outlook.types.mail_folder import MailFolderCreateRequest
 
-BASE_URL = "https://graph.microsoft.com/v1.0"
+from app.email_service.outlook.types.category import CategoryList
+from app.email_service.outlook.types.category import Category
+from app.email_service.outlook.types.category import CategoryCreateRequest
 
+from app.email_service.outlook.types.message_list import MessageList
+from app.email_service.outlook.types.message import Message
+from app.email_service.outlook.types.message_request import MessageRequest
+from app.email_service.outlook.types.message_modify_request import MessageUpdateRequest
+
+from app.email_service.outlook.types.draft import DraftList
+from app.email_service.outlook.types.draft import Draft
+from app.email_service.outlook.types.draft import DraftCreateRequest
+
+from app.email_service.outlook.types.thread import Thread
+from app.email_service.outlook.types.thread import ThreadRequest
+
+BASE_URL = "https://graph.microsoft.com/v1.0/me"
+MAX_PAGE_SIZE = 50
 
 class OutlookService:
 
-    def __init__(self, access_token: str):
-        self.access_token = access_token
+    def __init__(self, token_manager: OutlookTokenManager) -> None:
+        self.timeout = config.OUTLOOK_TIMEOUT_SECONDS
+        self._session = token_manager.get_session()
 
-    def _request(self, method, endpoint, **kwargs):
-        headers = {
-            "Authorization": f"Bearer {self.access_token}",
-            "Accept": "application/json",
-        }
+    # HTTP
+    def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self._request("GET", path, params=params)
 
-        response = requests.request(
-            method,
-            BASE_URL + endpoint,
-            headers=headers,
-            timeout=30,
-            **kwargs,
-        )
+    def _post(self, path: str, body: dict[str, Any] | None = None, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self._request("POST", path, params=params, body=body)
+
+    def _patch(self, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self._request("PATCH", path, body=body)
+
+    def _delete(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self._request("DELETE", path, params=params)
+
+    def _request(self, method: str, path: str, params: dict[str, Any] | None = None, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        try:
+            response = self._session.request(method, BASE_URL + path, headers={"Accept": "application/json"}, params=params, json=body, timeout=self.timeout)
+
+        except requests.Timeout as error:
+            raise OutlookServiceError("Outlook request timed out.", status_code=504) from error
+
+        except requests.exceptions.SSLError as error:
+            raise OutlookServiceError("Secure connection to Outlook failed.", status_code=502) from error
+
+        except requests.ConnectionError as error:
+            raise OutlookServiceError("Could not connect to Outlook.", status_code=503) from error
+
+        except requests.exceptions.ChunkedEncodingError as error:
+            raise OutlookServiceError("Connection to Outlook dropped while reading the response.", status_code=502) from error
+
+        except requests.RequestException as error:
+            raise OutlookServiceError("Outlook request failed.", status_code=502) from error
+
+        if response.status_code == 401:
+            raise OutlookServiceError("Outlook access was revoked or expired. Please connect Outlook again.", status_code=401)
+
+        if not response.ok:
+            raise OutlookServiceError("Outlook request failed.", status_code=response.status_code)
+
+        if not response.content: return {}
 
         try:
-            response.raise_for_status()
-        except requests.HTTPError as error:
-            raise OutlookServiceError(
-                str(error),
-                response.status_code,
-            ) from error
+            return response.json()
 
-        if not response.content:
-            return None
+        except requests.JSONDecodeError as error:
+            raise OutlookServiceError("Outlook returned an invalid response.", status_code=502) from error
 
-        return response.json()
 
     @staticmethod
-    def _message_path(message_id: str):
-        return "/me/messages/" + quote(message_id, safe="")
+    def _id(value: str) -> str:
+        return quote(value, safe="")
 
-    # ------------------------------
-    # PROFILE
-    # ------------------------------
+    def get_verified_email(self) -> str:
+        email = self.get_profile().email
+        if not email:
+            raise ValueError("Microsoft did not return an email address")
 
-    def get_profile(self) -> Profile:
-        user = self._request("GET", "/me")
+        return email
 
-        mailbox = self._request(
-            "GET",
-            "/me/mailFolders/inbox",
-        )
 
-        return Profile(
-            emailAddress=(
-                user.get("mail")
-                or user.get("userPrincipalName")
-            ),
-            messagesTotal=mailbox.get("totalItemCount", 0),
-            displayName=user.get("displayName"),
-        )
+    # Profile
+    def get_profile(self) -> User:
+        return User.model_validate(self._get(""))
 
-    # ------------------------------
-    # LABELS / CATEGORIES
-    # ------------------------------
 
-    def get_labels(self) -> LabelListResponse:
-        data = self._request(
-            "GET",
-            "/me/outlook/masterCategories",
-        )
+    # Mail folders
+    def get_mail_folders(self, parent_folder_id: str | None = None, top: int = 100) -> MailFolderList:
+        path = f"/mailFolders/{self._id(parent_folder_id)}/childFolders" if parent_folder_id else "/mailFolders"
+        return MailFolderList.model_validate(self._get(path, {"$top": min(MAX_PAGE_SIZE, top)}))
 
-        labels = [
-            LabelResponse(
-                id=item["id"],
-                name=item["displayName"],
-                color=LabelColor(
-                    color=item.get("color", "preset0")
-                ),
-            )
-            for item in data.get("value", [])
-        ]
+    def get_mail_folder(self, folder_id: str = "inbox") -> MailFolder:
+        return MailFolder.model_validate(self._get(f"/mailFolders/{self._id(folder_id)}"))
 
-        return LabelListResponse(labels=labels)
+    def post_mail_folder(self, mailFolderCreateRequest: MailFolderCreateRequest) -> MailFolder:
+        return MailFolder.model_validate(self._post("/mailFolders", body=mailFolderCreateRequest.model_dump(exclude_none=True)))
 
-    def get_label(self, label_id: str) -> LabelResponse:
-        data = self._request(
-            "GET",
-            "/me/outlook/masterCategories/"
-            + quote(label_id, safe=""),
-        )
+    def delete_mail_folder(self, folder_id: str) -> None:
+        self._delete(f"/mailFolders/{self._id(folder_id)}")
 
-        return LabelResponse(
-            id=data["id"],
-            name=data["displayName"],
-            color=LabelColor(
-                color=data.get("color", "preset0")
-            ),
-        )
 
-    def create_label(
-        self,
-        label: LabelRequest,
-    ) -> LabelResponse:
+    # Categories
+    def get_categories(self) -> CategoryList:
+        return CategoryList.model_validate(self._get("/outlook/masterCategories"))
 
-        if not label.name:
-            raise ValueError("Label name is required")
+    def get_category(self, category_id: str) -> Category:
+        return Category.model_validate(self._get(f"/outlook/masterCategories/{self._id(category_id)}"))
 
-        payload = {
-            "displayName": label.name,
-            "color": (
-                label.color.color
-                if label.color
-                else "preset0"
-            ),
-        }
+    def post_category(self, categoryCreateRequest: CategoryCreateRequest) -> Category:
+        return Category.model_validate(self._post("/outlook/masterCategories", body=categoryCreateRequest.model_dump(exclude_none=True)))
 
-        data = self._request(
-            "POST",
-            "/me/outlook/masterCategories",
-            json=payload,
-        )
+    def delete_category(self, category_id: str) -> None:
+        self._delete(f"/outlook/masterCategories/{self._id(category_id)}")
 
-        return LabelResponse(
-            id=data["id"],
-            name=data["displayName"],
-            color=LabelColor(
-                color=data.get("color", "preset0")
-            ),
-        )
 
-    def delete_label(self, label_id: str) -> None:
-        self._request(
-            "DELETE",
-            "/me/outlook/masterCategories/"
-            + quote(label_id, safe=""),
-        )
+    # Messages
+    def get_messages(self, MessageListRequest: MessageListRequest) -> MessageList:
+        return MessageList.model_validate(self._get("/messages", {"$top": min(MAX_PAGE_SIZE, MessageListRequest.top)}))
 
-    # ------------------------------
-    # MESSAGES
-    # ------------------------------
+    def get_message(self, MessageRequest: MessageRequest) -> Message:
+        return Message.model_validate(self._get(f"/messages/{self._id(MessageRequest.id)}"))
 
-    def get_messages(
-        self,
-        top: int = 20,
-    ) -> MessageListResponse:
+    def update_message(self, message_id: str, messageUpdateRequest: MessageUpdateRequest) -> Message:
+        return Message.model_validate(self._patch(f"/messages/{self._id(message_id)}", body=messageUpdateRequest.model_dump(exclude_none=True)))
 
-        data = self._request(
-            "GET",
-            "/me/messages",
-            params={"$top": top},
-        )
 
-        messages = [
-            MessageResponse.model_validate(item)
-            for item in data.get("value", [])
-        ]
+    # Threads (Graph has no thread object for mailboxes. A thread is all messages with the same conversationId)
+    def get_thread(self, threadRequest: ThreadRequest) -> Thread:
+        return Thread.model_validate(self._get("/messages", {"$filter": f"conversationId eq '{threadRequest.id}'", "$top": threadRequest.top}))
 
-        return MessageListResponse(
-            messages=messages,
-            resultSizeEstimate=len(messages),
-            nextPageToken=data.get("@odata.nextLink"),
-        )
 
-    def get_message(
-        self,
-        message_id: str,
-    ) -> MessageResponse:
+    # Drafts (in Graph a draft is a Message with isDraft=true)
+    def get_drafts(self, DraftListRequest: DraftListRequest) -> DraftList:
+        return DraftList.model_validate(self._get("/mailFolders/drafts/messages", {"$top": min(MAX_PAGE_SIZE, DraftListRequest.top)}))
 
-        data = self._request(
-            "GET",
-            self._message_path(message_id),
-        )
+    def get_draft(self, DraftRequest: DraftRequest) -> Draft:
+        draft = Draft.model_validate(self._get(f"/messages/{self._id(DraftRequest.id)}"))
 
-        return MessageResponse.model_validate(data)
+        if draft.isDraft is not True:
+            raise OutlookServiceError("This message is not a draft", status_code=400)
 
-    def modify_message(
-        self,
-        message_id: str,
-        modification: MessageModifyRequest,
-    ) -> MessageResponse:
+        return draft
 
-        endpoint = self._message_path(message_id)
-
-        message = self._request("GET", endpoint)
-
-        categories = set(
-            message.get("categories", [])
-        )
-
-        # Resolve master-category IDs to their names.
-        category_data = self._request(
-            "GET",
-            "/me/outlook/masterCategories",
-        )
-
-        id_to_name = {
-            item["id"]: item["displayName"]
-            for item in category_data.get("value", [])
-        }
-
-        for label_id in modification.addLabelIds:
-            categories.add(
-                id_to_name.get(label_id, label_id)
-            )
-
-        for label_id in modification.removeLabelIds:
-            categories.discard(
-                id_to_name.get(label_id, label_id)
-            )
-
-        updated = self._request(
-            "PATCH",
-            endpoint,
-            json={"categories": sorted(categories)},
-        )
-
-        return MessageResponse.model_validate(updated)
-
-    # ------------------------------
-    # DRAFTS
-    # ------------------------------
-
-    def get_drafts(self) -> DraftListResponse:
-        data = self._request(
-            "GET",
-            "/me/mailFolders/drafts/messages",
-        )
-
-        drafts = [
-            DraftResponse(
-                id=item["id"],
-                message=MessageResponse.model_validate(item),
-            )
-            for item in data.get("value", [])
-        ]
-
-        return DraftListResponse(
-            drafts=drafts,
-            nextPageToken=data.get("@odata.nextLink"),
-            resultSizeEstimate=len(drafts),
-        )
-
-    def get_draft(
-        self,
-        draft_id: str,
-    ) -> DraftResponse:
-
-        message = self.get_message(draft_id)
-
-        if message.isDraft is not True:
-            raise OutlookServiceError(
-                "This message is not a draft",
-                400,
-            )
-
-        return DraftResponse(
-            id=message.id,
-            message=message,
-        )
-
-    def create_draft(
-        self,
-        draft: DraftRequest,
-    ) -> DraftResponse:
-
-        payload = draft.message.model_dump(
-            exclude_none=True
-        )
-
-        data = self._request(
-            "POST",
-            "/me/messages",
-            json=payload,
-        )
-
-        return DraftResponse(
-            id=data["id"],
-            message=MessageResponse.model_validate(data),
-        )
+    def create_draft(self, draftCreateRequest: DraftCreateRequest) -> Draft:
+        return Draft.model_validate(self._post("/messages", body=draftCreateRequest.model_dump(exclude_none=True)))
 
     def send_draft(self, draft_id: str) -> None:
-        self._request(
-            "POST",
-            self._message_path(draft_id) + "/send",
-        )
-
-    # ------------------------------
-    # SEND EMAIL
-    # ------------------------------
-
-    def send_message(
-        self,
-        message: MessageRequest,
-    ) -> None:
-
-        self._request(
-            "POST",
-            "/me/sendMail",
-            json={
-                "message": message.model_dump(
-                    exclude_none=True
-                ),
-                "saveToSentItems": True,
-            },
-        )
+        self._post(f"/messages/{self._id(draft_id)}/send")

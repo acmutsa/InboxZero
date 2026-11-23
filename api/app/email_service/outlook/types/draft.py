@@ -22,6 +22,9 @@ class DraftCreateRequest(BaseModel):
 class DraftRequest(MessageRequest):
     pass
 
+class DraftListRequest(BaseModel):
+    pass
+    
 class Draft(Message):
     pass
 

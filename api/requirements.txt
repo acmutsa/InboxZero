@@ -80,3 +80,5 @@ pytest==9.0.3
 psycopg[binary]
 httpx2
 msal==1.39.0
+email-validator==2.4.0
+dnspython==2.9.2

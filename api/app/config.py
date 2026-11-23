@@ -53,7 +53,7 @@ class Config(BaseSettings):
     # outlook
     OUTLOOK_CLIENT_ID: str
     OUTLOOK_CLIENT_SECRET: str
-    OUTLOOK_AUTHORITY: HttpUrlStr = "https://login.microsoftonline.com/consumers"
+    OUTLOOK_AUTHORITY: HttpUrlStr = "https://login.microsoftonline.com/common"
     OUTLOOK_REDIRECT_URI: HttpUrlStr = "http://localhost:3000/auth/outlook/callback"
     OUTLOOK_SCOPES: list[str] = ["User.Read", "Mail.ReadWrite", "Mail.Send", "MailboxSettings.ReadWrite"]
     OUTLOOK_STATE_SECRET: Secret32

@@ -2,6 +2,9 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 from app.email_service.outlook.types.message import Message
 
+class MessageListRequest(BaseModel):
+    top: Optional[int] = 10
+
 class MessageList(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
