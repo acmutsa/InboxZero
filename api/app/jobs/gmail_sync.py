@@ -14,7 +14,7 @@ from app.email_service.gmail.types.message import Message
 from app.email_service.gmail.types.message_list_request import MessageListRequest
 from app.email_service.gmail.types.message_request import MessageRequest
 from app.queue.redis import email_queue
-from app.queue.redis import enqueue_process_email
+from app.queue.redis import enqueue_draft_email
 from app.queue.redis import redis_connection
 from app.repositories.email import create_email
 from app.repositories.email_account import email_account_find_one_by_id
@@ -52,7 +52,7 @@ def sync_gmail_job(account_id: str, history_id: int) -> None:
 
     for email_id in new_email_ids:
         try:
-            enqueue_process_email(email_queue, email_id)
+            enqueue_draft_email(email_queue, email_id)
         except RedisError:
             logger.exception("Could not enqueue saved email for processing", extra={"account_id": account_id, "email_id": str(email_id)})
 

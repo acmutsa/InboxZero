@@ -21,7 +21,7 @@ from app.db.schema import EmailServiceProvider
 from app.db.session import get_db
 from app.email_service.gmail.types.notification import GmailNotification
 from app.models.pubsub_push_request import PubSubPushRequest
-from app.queue.redis import enqueue_gmail
+from app.queue.redis import enqueue_new_gmail
 from app.queue.redis import get_queue
 from app.repositories.email_account import email_account_find_one_by_email
 
@@ -60,7 +60,7 @@ def gmail_push_notification(
         return
 
     try:
-        job_id = enqueue_gmail("app.jobs.gmail_sync.sync_gmail_job", queue, account.id, notification.historyId)
+        job_id = enqueue_new_gmail("app.jobs.gmail_sync.sync_gmail_job", queue, account.id, notification.historyId)
 
     except RedisError:
         logger.exception("Could not enqueue Gmail sync", extra={"pubsub_message_id": body.message.messageId, "account_id": str(account.id)})
