@@ -1,15 +1,11 @@
 import logging
 import msal
-import requests
-
 from app.config import config
+from app.email_service.outlook.types.error import OutlookServiceError
 
 logger = logging.getLogger(__name__)
 
-
 class MicrosoftOAuth:
-
-    GRAPH_URL = "https://graph.microsoft.com/v1.0"
 
     def __init__(self):
         self.app = msal.ConfidentialClientApplication(
@@ -35,41 +31,6 @@ class MicrosoftOAuth:
         )
 
         if "access_token" not in result:
-            # Log only the error category, never tokens or codes.
-            logger.warning("Microsoft OAuth error: %s %s", result.get("error"), result.get("error_codes"))
-            raise RuntimeError("Microsoft token exchange failed")
+            raise OutlookServiceError("Microsoft token exchange failed", status_code=400)
 
         return result
-
-    def refresh_access_token(self, refresh_token: str) -> dict:
-        if not refresh_token:
-            raise ValueError("Microsoft refresh token is missing")
-
-        result = self.app.acquire_token_by_refresh_token(
-            refresh_token=refresh_token,
-            scopes=config.OUTLOOK_SCOPES,
-        )
-
-        if "access_token" not in result:
-            raise RuntimeError(
-                "Microsoft token refresh failed: "
-                + result.get("error", "unknown_error")
-            )
-
-        return result
-
-    def get_verified_email(self, access_token: str) -> str:
-        response = requests.get(
-            f"{self.GRAPH_URL}/me",
-            headers={"Authorization": f"Bearer {access_token}"},
-            timeout=config.OUTLOOK_TIMEOUT_SECONDS,
-        )
-        response.raise_for_status()
-        user = response.json()
-
-        email = user.get("mail") or user.get("userPrincipalName")
-
-        if not email:
-            raise ValueError("Microsoft did not return an email address")
-
-        return email

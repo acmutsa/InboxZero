@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 class ConnectOutlookRequest(BaseModel):
-    outlook: str
+    outlook: EmailStr
