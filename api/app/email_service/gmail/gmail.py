@@ -48,7 +48,7 @@ from app.email_service.gmail.types.history import HistoryListRequest
 from app.email_service.gmail.types.history import HistoryList
 
 BASE_URL = "https://gmail.googleapis.com/gmail/v1/users/me"
-MAX_PAGE_SIZE = 500
+MAX_PAGE_SIZE = 50
 
 class GmailService:
 

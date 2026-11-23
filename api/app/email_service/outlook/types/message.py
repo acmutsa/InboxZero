@@ -1,74 +1,47 @@
+from datetime import datetime
+from typing import Literal, Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from typing import Optional
-from pydantic import BaseModel, Field
+class EmailAddress(BaseModel):
+    address: Optional[str] = None
+    name: Optional[str] = None
 
+class Recipient(BaseModel):
+    emailAddress: EmailAddress
+
+class ItemBody(BaseModel):
+    contentType: str  # "html" or "text"
+    content: str
 
 class MessageHeader(BaseModel):
     name: str
     value: str
 
+class Message(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
 
-class MessageBody(BaseModel):
-    contentType: str = "HTML"
-    content: str = ""
-
-
-class EmailAddress(BaseModel):
-    address: str
-    name: Optional[str] = None
-
-
-class Recipient(BaseModel):
-    emailAddress: EmailAddress
-
-
-class MessageRequest(BaseModel):
-    subject: str
-    body: MessageBody
-    toRecipients: list[Recipient] = Field(
-        default_factory=list
-    )
-    ccRecipients: list[Recipient] = Field(
-        default_factory=list
-    )
-    bccRecipients: list[Recipient] = Field(
-        default_factory=list
-    )
-
-
-class MessageModifyRequest(BaseModel):
-    addLabelIds: list[str] = Field(
-        default_factory=list
-    )
-    removeLabelIds: list[str] = Field(
-        default_factory=list
-    )
-
-
-class MessageResponse(BaseModel):
     id: str
+    conversationId: Optional[str] = None
+    parentFolderId: Optional[str] = None
     subject: Optional[str] = None
     bodyPreview: Optional[str] = None
-    body: Optional[MessageBody] = None
-    fromAddress: Optional[Recipient] = Field(
-        default=None,
-        alias="from"
-    )
-    toRecipients: list[Recipient] = Field(
-        default_factory=list
-    )
-    categories: list[str] = Field(
-        default_factory=list
-    )
+    body: Optional[ItemBody] = None
+    from_user: Optional[Recipient] = Field(None, alias="from")
+    toRecipients: list[Recipient] = []
+    ccRecipients: list[Recipient] = []
+    bccRecipients: list[Recipient] = []
+    categories: list[str] = []
     isRead: Optional[bool] = None
     isDraft: Optional[bool] = None
-    receivedDateTime: Optional[str] = None
-    conversationId: Optional[str] = None
+    hasAttachments: Optional[bool] = None
+    receivedDateTime: Optional[datetime] = None
+    sentDateTime: Optional[datetime] = None
 
+    @property
+    def text(self) -> Optional[str]:
+        return self.get_body("text/plain") or self.get_body("text/html")
 
-class MessageListResponse(BaseModel):
-    messages: list[MessageResponse] = Field(
-        default_factory=list
-    )
-    nextPageToken: Optional[str] = None
-    resultSizeEstimate: Optional[int] = None
+    def get_body(self, mime_type: Literal["text/plain", "text/html"] = "text/plain") -> Optional[str]:
+        if self.body is None: return None
+        wanted = "text" if mime_type == "text/plain" else "html"
+        return self.body.content if self.body.contentType.lower() == wanted else None
