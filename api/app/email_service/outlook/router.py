@@ -26,13 +26,16 @@ from app.db.schema import EmailServiceProvider
 from app.db.session import get_db
 
 from app.email_service.outlook.oauth import MicrosoftOAuth
+from app.email_service.outlook.outlook import OutlookService
+from app.email_service.outlook.token_manager import OutlookTokenManager
+from app.email_service.outlook.types.error import OutlookServiceError
 
 from app.repositories.email_account import create_email_account
 from app.repositories.email_account import email_account_find_one_by_email
 from app.repositories.email_account_token import create_tokens
 from app.repositories.user import user_find_one_by_clerk_id
 
-auth_outlook_router = APIRouter(prefix="/auth/outlook", tags=["outlook-connect"])
+auth_outlook_router = APIRouter(prefix="/auth/outlook")
 logger = logging.getLogger(__name__)
 
 
@@ -69,7 +72,7 @@ def callback(
     try:
         tokens = oauth.exchange_code(body.code)
 
-    except RuntimeError:
+    except OutlookServiceError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="This sign-in link was already used or expired. Please connect Outlook again.",
         )
@@ -80,9 +83,9 @@ def callback(
         )
 
     try:
-        email = oauth.get_verified_email(tokens["access_token"])
+        email = OutlookService(OutlookTokenManager.from_access_token(tokens["access_token"])).get_verified_email()
 
-    except (ValueError, requests.RequestException):
+    except (ValueError, OutlookServiceError):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail="We couldn't verify your Microsoft account. Please try again.",
         )
@@ -97,8 +100,7 @@ def callback(
             status_code=status.HTTP_502_BAD_GATEWAY, detail="Microsoft didn't grant offline access. Please connect Outlook again.",
         )
 
-    expires_in = int(tokens.get("expires_in", 3600))
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=int(tokens.get("expires_in", 3600)))
 
     try:
         user = user_find_one_by_clerk_id(db, user_id)
