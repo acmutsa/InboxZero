@@ -17,3 +17,7 @@ def get_queue() -> Queue:
 def enqueue_gmail(job_name:str, queue: Queue, account_id: uuid.UUID, history_id: int) -> str:
     job = queue.enqueue(job_name, str(account_id), history_id, job_timeout=JOB_TIMEOUT_SECONDS, retry=JOB_RETRY)
     return job.id
+
+def enqueue_outlook(job_name: str, queue: Queue, account_id: uuid.UUID, message_id: str) -> str:
+    job = queue.enqueue(job_name, str(account_id), message_id, job_timeout=JOB_TIMEOUT_SECONDS, retry=JOB_RETRY)
+    return job.id

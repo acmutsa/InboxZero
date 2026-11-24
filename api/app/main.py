@@ -14,7 +14,9 @@ from app.auth.jwt import decode
 from app.db.session import get_db
 from app.middleware.cors import add_cors_middleware
 from app.email_service.gmail.router import auth_gmail_router
+from app.email_service.outlook.router import auth_outlook_router
 from app.email_service.gmail.webhook import webhook_gmail_router
+from app.email_service.outlook.webhook import webhook_outlook_router
 from app.models.decoded_jwt import DecodedJWT
 from app.models.email_account_response import EmailAccountResponse
 from app.models.register_user_request import RegisterUserRequest
@@ -24,6 +26,8 @@ from app.repositories.category import create_default_categories
 from app.repositories.email_account import email_account_disconnect
 from app.repositories.email_account import email_account_find_one_by_id
 from app.repositories.email_account import email_accounts_find_all_by_user
+from app.repositories.stats import email_counts_by_category
+from app.repositories.stats import draft_count
 from app.repositories.user import create_user
 from app.repositories.user import delete_user
 from app.repositories.user import update_user
@@ -35,6 +39,8 @@ app = FastAPI()
 add_cors_middleware(app)
 app.include_router(auth_gmail_router)
 app.include_router(webhook_gmail_router)
+app.include_router(auth_outlook_router)
+app.include_router(webhook_outlook_router)
 
 @app.get("/health")
 def health():
@@ -248,12 +254,60 @@ def disconnect_email_account_endpoint(
     "/api/email-accounts/{email_account_id}/stats/categories",
     status_code=status.HTTP_200_OK,
 )
-def statsCategories_endpoint():
-    return {"Emails grouped by category": "ok"}
+def statsCategories_endpoint(
+    email_account_id: uuid.UUID,
+    decoded_jwt: DecodedJWT = Depends(decode),
+    db: Session = Depends(get_db),
+):
+    try:
+        account = email_account_find_one_by_id(
+            db,
+            email_account_id,
+            decoded_jwt.user_id,
+        )
+
+        if account is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Email account not found.",
+            )
+
+        return email_counts_by_category(db, email_account_id)
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve email statistics. Please try again later.",
+        )
 
 @app.get(
     "/api/email-accounts/{email_account_id}/stats/drafts",
     status_code=status.HTTP_200_OK,
 )
-def emailDrafts_endpoint():
-    return {"Emails needing drafts": "ok"}
+def emailDrafts_endpoint(
+    email_account_id: uuid.UUID,
+    decoded_jwt: DecodedJWT = Depends(decode),
+    db: Session = Depends(get_db),
+):
+    try:
+        account = email_account_find_one_by_id(
+            db,
+            email_account_id,
+            decoded_jwt.user_id,
+        )
+
+        if account is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Email account not found.",
+            )
+
+        return {"drafts": draft_count(db, email_account_id)}
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve draft statistics. Please try again later.",
+        )

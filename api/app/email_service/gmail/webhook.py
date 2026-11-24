@@ -16,7 +16,7 @@ from rq import Queue
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.auth import pubsub_token
+from app.auth import gmail_pubsub_token
 from app.db.schema import EmailServiceProvider
 from app.db.session import get_db
 from app.email_service.gmail.types.notification import GmailNotification
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 )
 def gmail_push_notification(
     body: PubSubPushRequest,
-    pubsub_token: None = Depends(pubsub_token.decrypt),
+    gmail_pubsub_token: None = Depends(gmail_pubsub_token.decrypt),
     db: Session = Depends(get_db),
     queue: Queue = Depends(get_queue),
 ):

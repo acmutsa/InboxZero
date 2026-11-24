@@ -41,14 +41,24 @@ class Config(BaseSettings):
     GOOGLE_AUTH_PROVIDER_X509_CERT_URL: HttpUrlStr = "https://www.googleapis.com/oauth2/v1/certs"
     GOOGLE_REDIRECT_URIS: list[HttpUrl]
     GOOGLE_JAVASCRIPT_ORIGINS: list[HttpUrl]
-    GOOGLE_REDIRECT_URI: HttpUrlStr = "http://localhost:8000/auth/google/callback"
+    GOOGLE_REDIRECT_URI: HttpUrlStr = "http://localhost:3000/auth/google/callback"
     SCOPES: list[str]
     GOOGLE_STATE_SECRET: Secret32
     GOOGLE_STATE_EXPIRE_SECONDS: int = 600
     GOOGLE_REFRESH_TOKEN_SECRET: Secret32
     GMAIL_TIMEOUT_SECONDS: Annotated[float, Field(gt=0)] = 30
     GMAIL_PUBSUB_AUDIENCE: str  
-    GMAIL_PUBSUB_SERVICE_ACCOUNT: str 
+    GMAIL_PUBSUB_SERVICE_ACCOUNT: str
+
+    # outlook
+    OUTLOOK_CLIENT_ID: str
+    OUTLOOK_CLIENT_SECRET: str
+    OUTLOOK_AUTHORITY: HttpUrlStr = "https://login.microsoftonline.com/common"
+    OUTLOOK_REDIRECT_URI: HttpUrlStr = "http://localhost:3000/auth/outlook/callback"
+    OUTLOOK_SCOPES: list[str] = ["User.Read", "Mail.ReadWrite", "Mail.Send", "MailboxSettings.ReadWrite"]
+    OUTLOOK_STATE_SECRET: Secret32
+    OUTLOOK_STATE_EXPIRE_SECONDS: int = 600
+    OUTLOOK_TIMEOUT_SECONDS: Annotated[float, Field(gt=0)] = 30
 
     # app
     ENVIRONMENT: str = "development"
