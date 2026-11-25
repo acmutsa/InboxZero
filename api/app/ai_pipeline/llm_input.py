@@ -1,5 +1,3 @@
-"""The user message both LLM steps receive, in the layout the prompts describe."""
-
 from app.ai_pipeline.states import EmailState
 
 

@@ -1,8 +1,4 @@
-"""Fill the {{...}} placeholders in the prompt files for one user.
 
-When the user has a name stored it is used; otherwise every placeholder falls
-back to the generic wording ("user", and a [your name] sign-off placeholder).
-"""
 
 import json
 import re
@@ -12,6 +8,7 @@ from langchain.agents.middleware import ModelRequest
 from langchain.agents.middleware import dynamic_prompt
 
 from app.ai_pipeline.user_context import FALLBACK_NAME
+from app.ai_pipeline.user_context import CategoryOption
 from app.ai_pipeline.user_context import UserContext
 
 SIGN_OFF_PLACEHOLDER = "[your name]"
@@ -38,11 +35,20 @@ def prompt_values(user: UserContext) -> dict[str, str]:
         "user": user.display_name,
         "user_first_name": first_name or FALLBACK_NAME,
         "sign_off_rule": sign_off_rule,
-        # Used inside the JSON examples, so escape it as a JSON string body.
         "sign_off": json.dumps(sign_off)[1:-1],
-        # Appended to an example's "placeholders" list: nothing when the name is known.
         "sign_off_placeholder": sign_off_placeholder,
+        "categories": format_categories(user.categories),
     }
+
+
+def format_categories(categories: tuple[CategoryOption, ...] | list[CategoryOption]) -> str:
+    """Bullet list of each category's name and description."""
+    if not categories:
+        return "- (no categories: use null for category)"
+    return "\n".join(
+        f"- {category.name}: {category.description}" if category.description else f"- {category.name}"
+        for category in categories
+    )
 
 
 def render_prompt(template: str, user: UserContext) -> str:
@@ -51,7 +57,6 @@ def render_prompt(template: str, user: UserContext) -> str:
     def replace(match: re.Match[str]) -> str:
         name = match.group(1)
         if name not in values:
-            # A typo in a prompt file would otherwise reach the model as literal text.
             raise KeyError(f"Unknown prompt placeholder {{{{{name}}}}}")
         return values[name]
 
@@ -59,7 +64,6 @@ def render_prompt(template: str, user: UserContext) -> str:
 
 
 def user_prompt_middleware(template: str) -> AgentMiddleware:
-    """Agent middleware that renders `template` for the user passed as the run's context."""
 
     @dynamic_prompt
     def render_for_user(request: ModelRequest) -> str:

@@ -1,20 +1,28 @@
-"""Who the pipeline is working for, loaded from the database for each email."""
+import uuid
 
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import field_validator
 
-# Used in prompts when the user has no name stored.
 FALLBACK_NAME = "user"
+
+
+class CategoryOption(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: uuid.UUID | None = None
+    name: str
+    description: str | None = None
 
 
 class UserContext(BaseModel):
     model_config = ConfigDict(frozen=True, str_strip_whitespace=True)
 
-    # The connected mailbox address (email_accounts.email_account).
+    user_id: uuid.UUID | None = None
     email: str
     first_name: str | None = None
     last_name: str | None = None
+    categories: tuple[CategoryOption, ...] = ()
 
     @field_validator("first_name", "last_name", mode="after")
     @classmethod
@@ -28,5 +36,10 @@ class UserContext(BaseModel):
 
     @property
     def display_name(self) -> str:
-        """Full name if stored, otherwise the generic "user"."""
         return self.full_name or FALLBACK_NAME
+
+    def find_category(self, name: str | None) -> CategoryOption | None:
+        if not name:
+            return None
+        wanted = name.strip().lower()
+        return next((category for category in self.categories if category.name.lower() == wanted), None)
