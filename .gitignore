@@ -48,8 +48,15 @@ __pycache__/
 
 #test
 test/
+tests/
+
 # Local VS Code settings
 .vscode/
 
 # Local Outlook tests
 /api/tests/test_outlook_*.py
+
+# AI 
+Claude.md
+INSTRUCTIONS.md
+CLAUDE.md
