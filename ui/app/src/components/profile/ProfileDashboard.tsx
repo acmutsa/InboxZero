@@ -1,14 +1,18 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useClerk } from '@clerk/nextjs';
 import { useState } from 'react';
-import { useSessionValue } from '@/hooks/useSessionValue';
-import { clearPreview } from '@/lib/preview';
+import { toApiError } from '@/lib/api/api';
+import { useApi, useApiQuery, type ApiQuery } from '@/lib/api/hooks';
+import type { EmailAccount, User } from '@/lib/api/types';
+import { loadAccountStats, summarizeStats } from '@/lib/email-stats';
 import InboxPanel from '@/components/InboxPanel';
 import FloatingNavbar from '@/components/FloatingNavbar';
 import Grainient from '@/components/Grainient';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -23,46 +27,59 @@ import {
 } from '@/components/ui/dropdown-menu';
 import ProviderCard from './ProviderCard';
 import ActivityCharts from './ActivityCharts';
-import { sampleAccounts, type PreviewAccount } from '@/lib/preview-accounts';
-import { emailTotal, gmailTotal, outlookTotal } from '@/lib/demo-analytics';
 import dialogStyles from '@/components/ui/PreviewDialog.module.css';
 import profileStyles from '@/components/profile/ProfileDashboard.module.css';
 import navigationStyles from '@/components/FloatingNavbar.module.css';
 
-type Person = { firstName: string; lastName: string; email: string };
 const profileTabs = ['Profile', 'Workspace', 'Activity'];
-const samplePerson: Person = { firstName: 'Maya', lastName: 'Chen', email: '' };
 
-export default function ProfileDashboard() {
-  const router = useRouter();
-  const raw = useSessionValue('inboxzero-profile');
+export default function ProfileDashboard({
+  user,
+  emailAccounts,
+}: {
+  user: User;
+  emailAccounts: ApiQuery<EmailAccount[]>;
+}) {
+  const { signOut } = useClerk();
+  const api = useApi();
+  const accounts = emailAccounts.data ?? [];
+  const accountIds = accounts.map((account) => account.id).join(',');
+  const accountStats = useApiQuery(accountIds ? `stats:${accountIds}` : null, (client) =>
+    loadAccountStats(client, accounts),
+  );
+  // Null while loading, so the panel doesn't show zeros that look like real data.
+  const statsLoading = (!emailAccounts.data && !emailAccounts.error) || accountStats.isLoading;
+  const stats = statsLoading ? null : summarizeStats(accountStats.data?.stats ?? []);
+  const failedStats = accountStats.data?.failed ?? [];
+  const firstName = user.first_name ?? '';
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
   const [addOpen, setAddOpen] = useState(false);
-  const [accounts, setAccounts] = useState<PreviewAccount[]>(sampleAccounts);
-  let person = samplePerson;
-  try {
-    const p = raw ? JSON.parse(raw) : null;
-    if (
-      p &&
-      typeof p.firstName === 'string' &&
-      typeof p.lastName === 'string' &&
-      typeof p.email === 'string'
-    )
-      person = p;
-  } catch {
-    /* Use the sample identity for invalid preview data. */
+  const [gmail, setGmail] = useState('');
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState('');
+  const [accountError, setAccountError] = useState('');
+
+  async function connectGmail() {
+    setConnecting(true);
+    setConnectError('');
+    try {
+      const { authorization_url } = await api.connectGmail({ gmail: gmail.trim() });
+      window.location.assign(authorization_url);
+    } catch (caught) {
+      setConnectError(toApiError(caught).message);
+      setConnecting(false);
+    }
   }
 
-  function addProvider(provider: string) {
-    const email =
-      provider === 'Gmail' ? 'maya.work@studio.dev' : 'maya.work@outlook.com';
-    setAccounts((previous) =>
-      previous.some((account) => account.email === email)
-        ? previous.map((account) =>
-            account.email === email ? { ...account, connected: true } : account,
-          )
-        : [...previous, { provider, email, connected: true }],
-    );
-    setAddOpen(false);
+  async function disconnect(account: EmailAccount) {
+    if (!window.confirm(`Disconnect ${account.email_account}?`)) return;
+    setAccountError('');
+    try {
+      await api.disconnectEmailAccount(account.id);
+      emailAccounts.reload();
+    } catch (caught) {
+      setAccountError(toApiError(caught).message);
+    }
   }
 
   return (
@@ -75,24 +92,17 @@ export default function ProfileDashboard() {
             <DropdownMenuTrigger asChild>
               <Button
                 className={navigationStyles['nav-account']}
-                aria-label={`Open account menu for ${person.firstName}`}
+                aria-label={`Open account menu for ${fullName || 'your account'}`}
                 title="Account menu"
               >
                 <span aria-hidden="true">
-                  {person.firstName.slice(0, 1).toUpperCase()}
+                  {(firstName.slice(0, 1) || '?').toUpperCase()}
                 </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem disabled>
-                {person.firstName} {person.lastName}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  clearPreview();
-                  router.push('/auth/sign-in');
-                }}
-              >
+              <DropdownMenuItem disabled>{fullName}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => void signOut({ redirectUrl: '/' })}>
                 Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -112,7 +122,7 @@ export default function ProfileDashboard() {
           <div className={profileStyles['profile-header']}>
             <div className={profileStyles['profile-copy']}>
               <span className="eyebrow">Your profile</span>
-              <h1 id="profile-title">Hello, {person.firstName}!</h1>
+              <h1 id="profile-title">{firstName ? `Hello, ${firstName}!` : 'Hello!'}</h1>
             </div>
             <Button className={profileStyles['add-email']} onClick={() => setAddOpen(true)}>
               Add email
@@ -123,60 +133,89 @@ export default function ProfileDashboard() {
             <div className={profileStyles['provider-grid']}>
               {accounts.map((account) => (
                 <ProviderCard
-                  key={account.email}
-                  {...account}
-                  onConnectedChange={(connected) =>
-                    setAccounts((previous) =>
-                      previous.map((item) =>
-                        item.email === account.email
-                          ? { ...item, connected }
-                          : item,
-                      ),
-                    )
-                  }
+                  key={account.id}
+                  provider={account.provider === 'gmail' ? 'Gmail' : 'Outlook'}
+                  email={account.email_account}
+                  connected
+                  onConnectedChange={() => void disconnect(account)}
                 />
               ))}
             </div>
+            {emailAccounts.isLoading && !emailAccounts.data && <p>Loading email accounts…</p>}
+            {emailAccounts.data && accounts.length === 0 && (
+              <p>No email accounts connected yet. Use “Add email” to connect Gmail.</p>
+            )}
+            {emailAccounts.error && <p role="alert">{emailAccounts.error.message}</p>}
+            {accountError && <p role="alert">{accountError}</p>}
           </section>
         </div>
       </section>
       <section id="workspace" aria-label="Email workspace">
-        <InboxPanel name={person.firstName} />
+        <InboxPanel name={firstName} />
       </section>
       <section id="activity" className={profileStyles['page-section']} aria-labelledby="activity-title">
         <Card className={`${profileStyles['activity-panel']} glass-surface`}>
           <h2 id="activity-title" className={profileStyles['activity-heading']}>Activity</h2>
           <div className={profileStyles['metrics']}>
             {[
-              [emailTotal, 'Total emails'],
-              [gmailTotal, 'Gmail'],
-              [outlookTotal, 'Outlook'],
+              [stats?.emailTotal, 'Total emails'],
+              [stats?.gmailTotal, 'Gmail'],
+              [stats?.outlookTotal, 'Outlook'],
             ].map(([n, label]) => (
               <div key={label}>
-                <strong>{n}</strong>
+                <strong>{n ?? '—'}</strong>
                 <p>{label}</p>
               </div>
             ))}
           </div>
-          <ActivityCharts />
+          {accountStats.error && <p role="alert">{accountStats.error.message}</p>}
+          {failedStats.length > 0 && (
+            <p role="alert">Couldn&apos;t load stats for {failedStats.join(', ')}.</p>
+          )}
+          <ActivityCharts stats={stats} />
         </Card>
       </section>
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog
+        open={addOpen}
+        onOpenChange={(open) => {
+          setAddOpen(open);
+          if (!open) setConnectError('');
+        }}
+      >
         <DialogContent className={dialogStyles['preview-dialog']}>
           <DialogTitle>Add an email account</DialogTitle>
           <DialogDescription>
-            Choose a provider to connect another inbox.
+            Enter the Gmail address to connect. You&apos;ll sign in to that account on Google.
           </DialogDescription>
-          <Button onClick={() => addProvider('Gmail')}>
-            Continue with Google
+          <form
+            id="connect-gmail-form"
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void connectGmail();
+            }}
+          >
+            <Label htmlFor="gmail-address">Gmail address</Label>
+            <Input
+              id="gmail-address"
+              type="email"
+              autoComplete="email"
+              required
+              placeholder="you@gmail.com"
+              value={gmail}
+              onChange={(e) => setGmail(e.target.value)}
+            />
+          </form>
+          {connectError && <small role="alert">{connectError}</small>}
+          <Button type="submit" form="connect-gmail-form" disabled={connecting}>
+            {connecting ? 'Redirecting to Google…' : 'Continue with Google'}
           </Button>
-          <Button variant="outline" onClick={() => addProvider('Outlook')}>
-            Continue with Microsoft
+          <Button variant="outline" disabled>
+            Continue with Microsoft (coming soon)
           </Button>
           <Button variant="outline" onClick={() => setAddOpen(false)}>
             Cancel
           </Button>
-          <small>Preview connection only.</small>
         </DialogContent>
       </Dialog>
     </main>

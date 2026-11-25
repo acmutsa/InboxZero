@@ -16,16 +16,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
-import {
-  emailCategories,
-  gmailTotal,
-  outlookTotal,
-  emailTotal,
-  draftCounts,
-  draftTotal,
-  draftPercentage,
-  draftRequirements,
-} from '@/lib/demo-analytics';
+import type { EmailStats } from '@/lib/email-stats';
 import chartsStyles from '@/components/profile/EmailCharts.module.css';
 
 const categoryConfig = {
@@ -77,8 +68,18 @@ function useChartEntrance() {
   };
 }
 
-function CategoryChart() {
+/** Rounds the largest count up to its leading digit (7 → 10, 23 → 30, 150 → 200). */
+function axisMax(counts: number[]) {
+  const max = Math.max(0, ...counts);
+  if (max <= 10) return 10;
+  const step = 10 ** Math.floor(Math.log10(max));
+  return Math.ceil(max / step) * step;
+}
+
+function CategoryChart({ stats }: { stats: EmailStats }) {
   const { ref, ready, animate } = useChartEntrance();
+  const { emailCategories } = stats;
+  const top = axisMax(emailCategories.flatMap((row) => [row.gmail, row.outlook]));
   return (
     <div ref={ref} className={chartsStyles['chart-card']}>
       <h3>Emails by category</h3>
@@ -91,7 +92,7 @@ function CategoryChart() {
           <i className={chartsStyles['legend-outlook']} />
           Outlook
         </span>
-        <small>Scale: 0–150 emails</small>
+        <small>Scale: 0–{top} emails</small>
       </div>
       {ready ? (
         <ChartContainer
@@ -127,8 +128,9 @@ function CategoryChart() {
               }
             />
             <YAxis
-              domain={[0, 150]}
-              ticks={[0, 50, 100, 150]}
+              domain={[0, top]}
+              ticks={[0, top / 2, top]}
+              allowDecimals={false}
               axisLine={false}
               tickLine={false}
               tick={{
@@ -176,7 +178,7 @@ function CategoryChart() {
         <div style={{ height: 300 }} aria-hidden="true" />
       )}
       <table className="sr-only">
-        <caption>Email counts by category, last 30 days — sample data</caption>
+        <caption>Email counts by category and provider</caption>
         <thead>
           <tr>
             <th scope="col">Category</th>
@@ -198,8 +200,17 @@ function CategoryChart() {
   );
 }
 
-function DraftChart() {
+function DraftChart({ stats }: { stats: EmailStats }) {
   const { ref, ready, animate } = useChartEntrance();
+  const {
+    emailTotal,
+    draftCounts,
+    noDraftCounts,
+    draftTotal,
+    noDraftTotal,
+    draftPercentage,
+    draftRequirements,
+  } = stats;
   return (
     <div ref={ref} className={chartsStyles['draft-analysis']}>
       <h3>Draft requirements</h3>
@@ -208,7 +219,7 @@ function DraftChart() {
           <ChartContainer
             config={draftConfig}
             className={chartsStyles['draft-chart']}
-            aria-label={`${draftTotal} emails require a draft; ${emailTotal - draftTotal} do not.`}
+            aria-label={`${draftTotal} emails require a draft; ${noDraftTotal} do not.`}
           >
             <PieChart accessibilityLayer>
               <ChartTooltip
@@ -238,20 +249,19 @@ function DraftChart() {
       <h4>{draftPercentage}% needed a draft</h4>
       <p>
         ■ Draft required&nbsp; {draftTotal} &nbsp; □ No draft&nbsp;{' '}
-        {emailTotal - draftTotal}
+        {noDraftTotal}
       </p>
       <p>
-        Gmail: {draftCounts.gmail} draft / {gmailTotal - draftCounts.gmail} no
+        Gmail: {draftCounts.gmail} draft / {noDraftCounts.gmail} no draft
+      </p>
+      <p>
+        Outlook: {draftCounts.outlook} draft / {noDraftCounts.outlook} no
         draft
-      </p>
-      <p>
-        Outlook: {draftCounts.outlook} draft /{' '}
-        {outlookTotal - draftCounts.outlook} no draft
       </p>
     </div>
   );
 }
 
-export default function EmailCharts() {
-  return <><CategoryChart /><DraftChart /></>;
+export default function EmailCharts({ stats }: { stats: EmailStats }) {
+  return <><CategoryChart stats={stats} /><DraftChart stats={stats} /></>;
 }

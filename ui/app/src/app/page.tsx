@@ -1,13 +1,15 @@
-import Link from 'next/link';
 import GlassIcon from '@/components/GlassIcon';
-import { ArrowDown, ArrowUpRight, Check, FilePenLine, Link2, ShieldCheck } from 'lucide-react';
+import { ArrowDown, Check, FilePenLine, Link2, ShieldCheck } from 'lucide-react';
 import LandingInboxPreview from '@/components/LandingInboxPreview';
 import Grainient from '@/components/Grainient';
+import AuthCta from '@/components/AuthCta';
 import FloatingNavbar from '@/components/FloatingNavbar';
 import SiteFooter from '@/components/SiteFooter';
 import { Section } from '@/components/ui/Section';
 import { Card } from '@/components/ui/card';
+import { demoMode } from '@/lib/auth-config';
 import landingStyles from '@/app/page.module.css';
+import navigationStyles from '@/components/FloatingNavbar.module.css';
 
 const steps = [
   { title: 'Connect', copy: 'Bring your Gmail and Outlook accounts into one workspace.', icon: Link2 },
@@ -23,7 +25,15 @@ const services = [
 export default function Home() {
   return (
     <main className="landing">
-      <FloatingNavbar />
+      <FloatingNavbar
+        action={
+          <AuthCta
+            demo={demoMode}
+            className={navigationStyles['nav-cta']}
+            signInClassName={navigationStyles['nav-sign-in']}
+          />
+        }
+      />
       <section id="home" className={landingStyles['hero']} aria-labelledby="hero-title">
         <div className={landingStyles['hero-background']} aria-hidden="true">
           <Grainient
@@ -40,9 +50,7 @@ export default function Home() {
             <br />You make the final call.
           </p>
           <div className={landingStyles['hero-actions']}>
-            <Link href="/auth/sign-up" className={landingStyles['light']}>
-              Get started <ArrowUpRight aria-hidden="true" />
-            </Link>
+            <AuthCta demo={demoMode} className={landingStyles['light']} />
             <a href="#about" className={landingStyles['secondary-link']}>
               See how it works <ArrowDown aria-hidden="true" />
             </a>
@@ -125,10 +133,7 @@ export default function Home() {
         <Card className={`${landingStyles['closing']} glass-surface`}>
           <h3>Make space for a better day.</h3>
           <p>Your inbox can wait less. You can do more.</p>
-          <Link href="/auth/sign-up" className={landingStyles['light']}>
-              <span>Get started</span>
-              <ArrowUpRight aria-hidden="true" />
-          </Link>
+          <AuthCta demo={demoMode} className={landingStyles['light']} />
         </Card>
       </Section>
       <SiteFooter />

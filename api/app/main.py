@@ -260,10 +260,17 @@ def statsCategories_endpoint(
     db: Session = Depends(get_db),
 ):
     try:
+        user = user_find_one_by_clerk_id(db, decoded_jwt.user_id)
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
+            )
+
         account = email_account_find_one_by_id(
             db,
             email_account_id,
-            decoded_jwt.user_id,
+            user.id,
         )
 
         if account is None:
@@ -291,10 +298,17 @@ def emailDrafts_endpoint(
     db: Session = Depends(get_db),
 ):
     try:
+        user = user_find_one_by_clerk_id(db, decoded_jwt.user_id)
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
+            )
+
         account = email_account_find_one_by_id(
             db,
             email_account_id,
-            decoded_jwt.user_id,
+            user.id,
         )
 
         if account is None:
