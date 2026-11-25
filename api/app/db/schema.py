@@ -1,5 +1,3 @@
-"""InboxZero SQLAlchemy mappings for the PostgreSQL schema."""
-
 from __future__ import annotations
 
 import enum
@@ -94,11 +92,11 @@ class EmailAccountToken(Base):
 
 class Email(Base):
     __tablename__ = "emails"
-    __table_args__ = (UniqueConstraint("email_account_id", "gmail_message_id", name="uq_emails_email_account_id_gmail_message_id"),)
+    __table_args__ = (UniqueConstraint("email_account_id", "provider_message_id", name="uq_emails_email_account_id_provider_message_id"),)
 
     email_account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("email_accounts.id", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"), nullable=False)
     category_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("categories.id", deferrable=True, initially="DEFERRED"), nullable=True)
-    gmail_message_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_message_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     from_address: Mapped[str] = mapped_column(Text, nullable=False)
     subject: Mapped[str | None] = mapped_column(Text)
     body: Mapped[str | None] = mapped_column(Text)
@@ -118,7 +116,7 @@ class Draft(Base):
     subject: Mapped[str | None] = mapped_column(Text)
     body: Mapped[str | None] = mapped_column(Text)
     status: Mapped[DraftStatus | None] = mapped_column(draft_status, server_default=text("'in_review'"))
-    gmail_draft_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_draft_id: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     email_account: Mapped[EmailAccount] = relationship(back_populates="drafts")
     email: Mapped[Email | None] = relationship(back_populates="drafts")
