@@ -29,6 +29,7 @@ class Config(BaseSettings):
     REDIS_HOST: str
     REDIS_PORT: int
     REDIS_URL: RedisUrlStr
+    REDIS_EMAIL_QUEUE: str = "email_queue"
     REDIS_SYNC_QUEUE: str = "sync"
     REDIS_DRAFT_QUEUE: str = "draft"
     # google

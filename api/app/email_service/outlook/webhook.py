@@ -24,7 +24,7 @@ from app.db.session import get_db
 from app.email_service.outlook.types.notification import OutlookNotificationList
 from app.queue.redis import enqueue_outlook
 from app.queue.redis import get_queue
-from app.repositories.email_account import email_account_find_one_active_by_id
+from app.repositories.email_account import email_account_find_one_by_id
 
 webhook_outlook_router = APIRouter(prefix="/webhooks", tags=["outlook-webhook"])
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ def outlook_push_notification(
             continue
 
         try:
-            account = email_account_find_one_active_by_id(db, account_id)
+            account = email_account_find_one_by_id(db, account_id)
   
         except SQLAlchemyError:
             db.rollback()
