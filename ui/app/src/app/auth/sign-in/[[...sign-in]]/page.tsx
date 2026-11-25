@@ -14,7 +14,8 @@ export default function SignInPage() {
   }
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <SignIn />
+      {/* Returning users go to their profile unless a redirect_url says otherwise. */}
+      <SignIn fallbackRedirectUrl="/profile" />
     </div>
   );
 }

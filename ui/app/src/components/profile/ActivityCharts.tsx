@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import type { EmailStats } from '@/lib/email-stats';
 import styles from './EmailCharts.module.css';
 
 function ChartPlaceholder() {
@@ -17,7 +18,8 @@ const EmailCharts = dynamic(() => import('./EmailCharts'), {
   loading: ChartPlaceholder,
 });
 
-export default function ActivityCharts() {
+/** Shows placeholders until `stats` has loaded. */
+export default function ActivityCharts({ stats }: { stats: EmailStats | null }) {
   const ref = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
 
@@ -36,7 +38,7 @@ export default function ActivityCharts() {
 
   return (
     <div ref={ref} className={styles.charts}>
-      {ready ? <EmailCharts /> : <ChartPlaceholder />}
+      {ready && stats ? <EmailCharts stats={stats} /> : <ChartPlaceholder />}
     </div>
   );
 }

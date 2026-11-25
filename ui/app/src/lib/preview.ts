@@ -7,13 +7,3 @@ export function savePreviewValue(key: string, value: string) {
     /* The preview still works when browser storage is disabled. */
   }
 }
-
-export function clearPreview() {
-  try {
-    sessionStorage.removeItem('inboxzero-profile');
-    sessionStorage.removeItem('inboxzero-signup-email');
-    window.dispatchEvent(new Event('storage'));
-  } catch {
-    /* Browser storage is optional for this UI preview. */
-  }
-}

@@ -1,18 +1,24 @@
-import type {
-  AuthorizationUrl,
-  CategoryStatsResponse,
-  ConnectGmailRequest,
-  CreateUserRequest,
-  DraftStatsResponse,
-  EmailAccount,
-  ErrorResponse,
-  GmailCallbackRequest,
-  GmailCallbackResponse,
-  UpdateUserRequest,
-  User,
-} from "./types";
+import { z } from "zod";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { env } from "@/lib/env";
+import {
+  AuthorizationUrlSchema,
+  CategoryStatsResponseSchema,
+  ConnectGmailRequestSchema,
+  CreateUserRequestSchema,
+  DraftStatsResponseSchema,
+  EmailAccountListSchema,
+  EmailAccountSchema,
+  ErrorResponseSchema,
+  GmailCallbackRequestSchema,
+  GmailCallbackResponseSchema,
+  UpdateUserRequestSchema,
+  UserSchema,
+  type ConnectGmailRequest,
+  type CreateUserRequest,
+  type GmailCallbackRequest,
+  type UpdateUserRequest,
+} from "./types";
 
 /** Returns the current Clerk session token, or null when signed out. */
 export type GetToken = () => Promise<string | null>;
@@ -32,9 +38,11 @@ type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
 async function readErrorMessage(response: Response): Promise<string> {
   try {
-    const { detail } = (await response.json()) as ErrorResponse;
-    if (typeof detail === "string") return detail;
-    if (Array.isArray(detail)) return detail.map((item) => item.msg).join(", ");
+    const parsed = ErrorResponseSchema.safeParse(await response.json());
+    if (parsed.success) {
+      const { detail } = parsed.data;
+      return typeof detail === "string" ? detail : detail.map((item) => item.msg).join(", ");
+    }
   } catch {
     // Body was empty or not JSON; fall through to the status text.
   }
@@ -45,6 +53,7 @@ async function request<T>(
   getToken: GetToken,
   method: HttpMethod,
   path: string,
+  responseSchema: z.ZodType<T> | null,
   body?: unknown,
 ): Promise<T> {
   const token = await getToken();
@@ -55,7 +64,7 @@ async function request<T>(
 
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${path}`, {
+    response = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -68,42 +77,73 @@ async function request<T>(
     throw new ApiError(response.status, await readErrorMessage(response));
   }
 
-  if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  if (responseSchema === null) return undefined as T;
+
+  const parsed = responseSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    console.error(`Unexpected response from ${method} ${path}`, parsed.error);
+    throw new ApiError(response.status, "The server sent an unexpected response.");
+  }
+  return parsed.data;
+}
+
+/** Validates a request body, turning Zod errors into a readable ApiError. */
+function validate<T>(schema: z.ZodType<T>, body: unknown): T {
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    throw new ApiError(422, parsed.error.issues.map((issue) => issue.message).join(", "));
+  }
+  return parsed.data;
 }
 
 export function createApiClient(getToken: GetToken) {
-  const get = <T>(path: string) => request<T>(getToken, "GET", path);
-  const post = <T>(path: string, body: unknown) => request<T>(getToken, "POST", path, body);
-  const patch = <T>(path: string, body: unknown) => request<T>(getToken, "PATCH", path, body);
-  const del = <T>(path: string) => request<T>(getToken, "DELETE", path);
+  const get = <T>(path: string, schema: z.ZodType<T>) =>
+    request(getToken, "GET", path, schema);
+  const post = <T>(path: string, schema: z.ZodType<T>, body: unknown) =>
+    request(getToken, "POST", path, schema, body);
+  const patch = <T>(path: string, schema: z.ZodType<T>, body: unknown) =>
+    request(getToken, "PATCH", path, schema, body);
+  const del = (path: string) => request<void>(getToken, "DELETE", path, null);
   const id = (value: string) => encodeURIComponent(value);
 
   return {
     // Users
-    createUser: (body: CreateUserRequest) => post<User>("/api/users/create", body),
-    getCurrentUser: () => get<User>("/api/users/find"),
-    updateUser: (body: UpdateUserRequest) => patch<User>("/api/users/update", body),
-    deleteUser: () => del<void>("/api/users/delete"),
+    createUser: async (body: CreateUserRequest) =>
+      post("/api/users/create", UserSchema, validate(CreateUserRequestSchema, body)),
+    getCurrentUser: () => get("/api/users/find", UserSchema),
+    updateUser: async (body: UpdateUserRequest) =>
+      patch("/api/users/update", UserSchema, validate(UpdateUserRequestSchema, body)),
+    deleteUser: () => del("/api/users/delete"),
 
     // Email accounts
-    getEmailAccounts: () => get<EmailAccount[]>("/api/email-accounts/find-all"),
+    getEmailAccounts: () => get("/api/email-accounts/find-all", EmailAccountListSchema),
     getEmailAccount: (accountId: string) =>
-      get<EmailAccount>(`/api/email-accounts/find/${id(accountId)}`),
+      get(`/api/email-accounts/find/${id(accountId)}`, EmailAccountSchema),
     disconnectEmailAccount: (accountId: string) =>
-      del<void>(`/api/email-accounts/disconnect/${id(accountId)}`),
+      del(`/api/email-accounts/disconnect/${id(accountId)}`),
 
     // Gmail connection
-    connectGmail: (body: ConnectGmailRequest) =>
-      post<AuthorizationUrl>("/auth/google/connect-gmail", body),
-    completeGmailConnection: (body: GmailCallbackRequest) =>
-      post<GmailCallbackResponse>("/auth/google/callback", body),
+    connectGmail: async (body: ConnectGmailRequest) =>
+      post(
+        "/auth/google/connect-gmail",
+        AuthorizationUrlSchema,
+        validate(ConnectGmailRequestSchema, body),
+      ),
+    completeGmailConnection: async (body: GmailCallbackRequest) =>
+      post(
+        "/auth/google/callback",
+        GmailCallbackResponseSchema,
+        validate(GmailCallbackRequestSchema, body),
+      ),
 
     // Stats
     getCategoryStats: (accountId: string) =>
-      get<CategoryStatsResponse>(`/api/email-accounts/${id(accountId)}/stats/categories`),
+      get(
+        `/api/email-accounts/${id(accountId)}/stats/categories`,
+        CategoryStatsResponseSchema,
+      ),
     getDraftStats: (accountId: string) =>
-      get<DraftStatsResponse>(`/api/email-accounts/${id(accountId)}/stats/drafts`),
+      get(`/api/email-accounts/${id(accountId)}/stats/drafts`, DraftStatsResponseSchema),
   };
 }
 

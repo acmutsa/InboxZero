@@ -2,9 +2,9 @@
 
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toApiError } from '@/lib/api/api';
-import { useApi } from '@/lib/api/hooks';
+import { useApi, useRegistration } from '@/lib/api/hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,15 @@ export default function RegistrationForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const email = user?.primaryEmailAddress?.emailAddress ?? '';
+
+  // Users who already registered skip the form.
+  const { status } = useRegistration();
+  useEffect(() => {
+    if (status === 'registered') router.replace('/profile');
+  }, [status, router]);
+  if (status === 'loading' || status === 'registered') {
+    return <p className="muted">Loading…</p>;
+  }
 
   async function register() {
     setSubmitting(true);

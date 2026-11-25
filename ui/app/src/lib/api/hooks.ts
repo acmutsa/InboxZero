@@ -3,11 +3,11 @@
 import { useAuth } from "@clerk/nextjs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { env } from "@/lib/env";
+
 import { ApiError, createApiClient, toApiError, type ApiClient } from "./api";
 
-// The backend verifies HS256 tokens with an `aud` claim, which Clerk's default
-// session token doesn't have, so requests use a Clerk JWT template instead.
-const JWT_TEMPLATE = process.env.NEXT_PUBLIC_CLERK_JWT_TEMPLATE || "inboxzero-api";
+const JWT_TEMPLATE = env.NEXT_PUBLIC_CLERK_JWT_TEMPLATE;
 
 /** API client bound to the signed-in user's Clerk session token. */
 export function useApi(): ApiClient {
@@ -74,4 +74,21 @@ export function useApiQuery<T>(key: string | null, fetcher: (api: ApiClient) => 
     isLoading: requestId !== null && result.requestId !== requestId,
     reload,
   };
+}
+
+export type ApiQuery<T> = ReturnType<typeof useApiQuery<T>>;
+
+type RegistrationStatus = "loading" | "registered" | "unregistered" | "error";
+
+/**
+ * Loads the backend user for the signed-in Clerk user. The backend answers
+ * 404 until they've registered, which shows up here as "unregistered".
+ */
+export function useRegistration() {
+  const user = useApiQuery("user", (client) => client.getCurrentUser());
+  let status: RegistrationStatus = "loading";
+  if (user.data) status = "registered";
+  else if (user.error?.status === 404) status = "unregistered";
+  else if (user.error) status = "error";
+  return { ...user, status };
 }
