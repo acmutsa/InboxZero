@@ -1,5 +1,3 @@
-"""InboxZero SQLAlchemy mappings for the PostgreSQL schema."""
-
 from __future__ import annotations
 
 import enum
@@ -94,15 +92,17 @@ class EmailAccountToken(Base):
 
 class Email(Base):
     __tablename__ = "emails"
+    __table_args__ = (UniqueConstraint("email_account_id", "provider_message_id", name="uq_emails_email_account_id_provider_message_id"),)
 
     email_account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("email_accounts.id", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"), nullable=False)
-    category_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("categories.id", deferrable=True, initially="DEFERRED"), nullable=False)
+    category_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("categories.id", deferrable=True, initially="DEFERRED"), nullable=True)
+    provider_message_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     from_address: Mapped[str] = mapped_column(Text, nullable=False)
     subject: Mapped[str | None] = mapped_column(Text)
     body: Mapped[str | None] = mapped_column(Text)
 
     email_account: Mapped[EmailAccount] = relationship(back_populates="emails")
-    category: Mapped[Category] = relationship(back_populates="emails")
+    category: Mapped[Category | None] = relationship(back_populates="emails")
     drafts: Mapped[list[Draft]] = relationship(back_populates="email", cascade="all", passive_deletes=True)
 
 
@@ -110,16 +110,17 @@ class Draft(Base):
     __tablename__ = "drafts"
 
     email_account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("email_accounts.id", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"), nullable=False)
-    category_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("categories.id", deferrable=True, initially="DEFERRED"), nullable=False)
+    category_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("categories.id", deferrable=True, initially="DEFERRED"), nullable=True)
     reply_to_email: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("emails.id", ondelete="CASCADE", deferrable=True, initially="IMMEDIATE"))
     to_address: Mapped[str] = mapped_column(Text, nullable=False)
     subject: Mapped[str | None] = mapped_column(Text)
     body: Mapped[str | None] = mapped_column(Text)
     status: Mapped[DraftStatus | None] = mapped_column(draft_status, server_default=text("'in_review'"))
+    provider_draft_id: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     email_account: Mapped[EmailAccount] = relationship(back_populates="drafts")
     email: Mapped[Email | None] = relationship(back_populates="drafts")
-    category: Mapped[Category] = relationship(back_populates="drafts")
+    category: Mapped[Category | None] = relationship(back_populates="drafts")
     check_point: Mapped[CheckPoint | None] = relationship(back_populates="draft", uselist=False, cascade="all, delete-orphan", passive_deletes=True)
 
 

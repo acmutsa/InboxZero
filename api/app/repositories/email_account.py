@@ -10,27 +10,27 @@ from app.db.schema import EmailAccount
 from app.db.schema import EmailServiceProvider
 from app.db.schema import User
 
-def email_account_find_one_by_email(
+def email_account_find_one_by_email_and_user_id(
     db: Session,
     email: str,
     user_id: uuid.UUID
 ) -> EmailAccount | None:
     return db.scalar(select(EmailAccount).where(EmailAccount.email_account == email, EmailAccount.user_id == user_id, EmailAccount.deleted_at.is_(None)))
 
-def email_account_find_one_active_by_email(
+def email_account_find_one_by_email(
     db: Session,
     email: str,
 ) -> EmailAccount | None:
     return db.scalar(select(EmailAccount).where(EmailAccount.email_account == email.lower(), EmailAccount.deleted_at.is_(None)))
 
-def email_account_find_one_by_id(
+def email_account_find_one_by_email_id_and_user_id(
     db: Session,
     email_id: uuid.UUID,
     user_id: uuid.UUID
 ) -> EmailAccount | None:
     return db.scalar(select(EmailAccount).where(EmailAccount.id == email_id, EmailAccount.user_id == user_id, EmailAccount.deleted_at.is_(None)))
 
-def email_account_find_one_active_by_id(
+def email_account_find_one_by_id(
     db: Session,
     account_id: uuid.UUID,
 ) -> EmailAccount | None:

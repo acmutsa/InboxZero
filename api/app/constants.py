@@ -30,3 +30,12 @@ DEFAULT_CATEGORIES: tuple[dict[str, str], ...] = (
         "category_description": "Emails that do not fit any other category.",
     },
 )
+
+AUTO_SUBJECTS = ("automatic reply", "out of office", "undeliverable",
+                 "delivery status notification", "mail delivery failed", "auto:")
+
+NO_REPLY_KEYWORDS = (
+    "noreply", "donotreply", "dontreply",
+    "notmonitored", "unmonitored", "unattended",
+    "mailerdaemon", "postmaster", "bounce", "autoreply", "autoconfirm",
+)

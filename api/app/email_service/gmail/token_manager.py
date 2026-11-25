@@ -16,7 +16,7 @@ from app.db.schema import EmailAccount
 from app.db.session import SessionLocal
 from app.email_service.gmail.types.error import GmailServiceError
 from app.repositories.email_account_token import update_tokens
-from app.repositories.email_account import email_account_find_one_by_id
+from app.repositories.email_account import email_account_find_one_by_email_id_and_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class GmailTokenManager:
     def _save_tokens(self) -> None:
         try:
             with SessionLocal() as db:
-                account = email_account_find_one_by_id(db, self._account_id, self._user_id)
+                account = email_account_find_one_by_email_id_and_user_id(db, self._account_id, self._user_id)
 
                 if account is None:
                     return 

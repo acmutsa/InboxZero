@@ -24,7 +24,7 @@ from app.models.update_user_request import UpdateUserRequest
 from app.models.user_response import UserResponse
 from app.repositories.category import create_default_categories
 from app.repositories.email_account import email_account_disconnect
-from app.repositories.email_account import email_account_find_one_by_id
+from app.repositories.email_account import email_account_find_one_by_email_id_and_user_id
 from app.repositories.email_account import email_accounts_find_all_by_user
 from app.repositories.stats import email_counts_by_category
 from app.repositories.stats import draft_count
@@ -201,7 +201,7 @@ def find_email_account_by_id_endpoint(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
             )
 
-        account = email_account_find_one_by_id(db, email_account_id, user.id)
+        account = email_account_find_one_by_email_id_and_user_id(db, email_account_id, user.id)
 
         if account is None:
             raise HTTPException(
@@ -233,7 +233,7 @@ def disconnect_email_account_endpoint(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
             )
 
-        account = email_account_find_one_by_id(db, email_account_id, user.id)
+        account = email_account_find_one_by_email_id_and_user_id(db, email_account_id, user.id)
 
         if account is None:
             raise HTTPException(
