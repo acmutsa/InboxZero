@@ -267,7 +267,7 @@ def statsCategories_endpoint(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
             )
 
-        account = email_account_find_one_by_id(
+        account = email_account_find_one_by_email_id_and_user_id(
             db,
             email_account_id,
             user.id,
@@ -305,7 +305,7 @@ def emailDrafts_endpoint(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
             )
 
-        account = email_account_find_one_by_id(
+        account = email_account_find_one_by_email_id_and_user_id(
             db,
             email_account_id,
             user.id,

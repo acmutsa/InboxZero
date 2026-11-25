@@ -14,7 +14,7 @@ from app.db.schema import EmailAccount
 from app.db.session import SessionLocal
 from app.email_service.outlook.oauth import MicrosoftOAuth
 from app.email_service.outlook.types.error import OutlookServiceError
-from app.repositories.email_account import email_account_find_one_by_id
+from app.repositories.email_account import email_account_find_one_by_email_id_and_user_id
 from app.repositories.email_account_token import update_tokens
 
 logger = logging.getLogger(__name__)
@@ -126,7 +126,7 @@ class OutlookTokenManager:
     def _save_tokens(self, new_refresh_token: str | None) -> None:
         try:
             with SessionLocal() as db:
-                account = email_account_find_one_by_id(db, self._account_id, self._user_id)
+                account = email_account_find_one_by_email_id_and_user_id(db, self._account_id, self._user_id)
 
                 if account is None or account.token is None:
                     return
