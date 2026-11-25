@@ -13,7 +13,7 @@ from app.email_service.gmail.types.history import HistoryListRequest
 from app.email_service.gmail.types.message import Message
 from app.email_service.gmail.types.message_list_request import MessageListRequest
 from app.email_service.gmail.types.message_request import MessageRequest
-from app.queue.redis import email_queue
+from app.queue.redis import draft_queue
 from app.queue.redis import enqueue_draft_email
 from app.queue.redis import redis_connection
 from app.repositories.email import create_email
@@ -30,7 +30,7 @@ HISTORY_PAGE_SIZE = 500
 
 
 class SyncAlreadyRunningError(Exception):
-    """Another sync for the same account holds the lock; RQ retries the job."""
+    pass
 
 
 def sync_gmail_job(account_id: str, history_id: int) -> None:
@@ -52,7 +52,7 @@ def sync_gmail_job(account_id: str, history_id: int) -> None:
 
     for email_id in new_email_ids:
         try:
-            enqueue_draft_email(email_queue, email_id)
+            enqueue_draft_email(draft_queue, email_id)
         except RedisError:
             logger.exception("Could not enqueue saved email for processing", extra={"account_id": account_id, "email_id": str(email_id)})
 
@@ -96,7 +96,7 @@ def _save_new_emails(account_id: uuid.UUID, notification_history_id: int) -> lis
             email_id = create_email(
                 db,
                 email_account_id=account.id,
-                gmail_message_id=message.id,
+                provider_message_id=message.id,
                 from_address=message.sender or "",
                 subject=message.subject,
                 body=message.text,
@@ -154,6 +154,5 @@ def _get_message_or_none(gmail: GmailService, message_id: str) -> Message | None
 
 
 def _newest_history_id(*history_ids: str | None) -> str | None:
-    """Pub/Sub can deliver notifications out of order, so never move the id backwards."""
     numeric_ids = [int(history_id) for history_id in history_ids if history_id]
     return str(max(numeric_ids)) if numeric_ids else None

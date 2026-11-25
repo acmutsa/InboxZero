@@ -27,6 +27,7 @@ class Message(BaseModel):
     bodyPreview: Optional[str] = None
     body: Optional[ItemBody] = None
     from_user: Optional[Recipient] = Field(None, alias="from")
+    replyTo: list[Recipient] = []
     toRecipients: list[Recipient] = []
     ccRecipients: list[Recipient] = []
     bccRecipients: list[Recipient] = []

@@ -39,6 +39,9 @@ from app.email_service.outlook.types.subscription import SubscriptionRenewReques
 BASE_URL = "https://graph.microsoft.com/v1.0"
 MAX_PAGE_SIZE = 50
 
+PREFER_IMMUTABLE_ID = 'IdType="ImmutableId"'
+PREFER_TEXT_BODY = 'outlook.body-content-type="text"'
+
 class OutlookService:
 
     def __init__(self, token_manager: OutlookTokenManager) -> None:
@@ -46,8 +49,8 @@ class OutlookService:
         self._session = token_manager.get_session()
 
     # HTTP
-    def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        return self._request("GET", path, params=params)
+    def _get(self, path: str, params: dict[str, Any] | None = None, prefer: tuple[str, ...] = ()) -> dict[str, Any]:
+        return self._request("GET", path, params=params, prefer=prefer)
 
     def _post(self, path: str, body: dict[str, Any] | None = None, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._request("POST", path, params=params, body=body)
@@ -58,9 +61,11 @@ class OutlookService:
     def _delete(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._request("DELETE", path, params=params)
 
-    def _request(self, method: str, path: str, params: dict[str, Any] | None = None, body: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _request(self, method: str, path: str, params: dict[str, Any] | None = None, body: dict[str, Any] | None = None, prefer: tuple[str, ...] = ()) -> dict[str, Any]:
+        headers = {"Accept": "application/json", "Prefer": ", ".join((PREFER_IMMUTABLE_ID, *prefer))}
+
         try:
-            response = self._session.request(method, BASE_URL + path, headers={"Accept": "application/json"}, params=params, json=body, timeout=self.timeout)
+            response = self._session.request(method, BASE_URL + path, headers=headers, params=params, json=body, timeout=self.timeout)
 
         except requests.Timeout as error:
             raise OutlookServiceError("Outlook request timed out.", status_code=504) from error
@@ -143,7 +148,7 @@ class OutlookService:
         return MessageList.model_validate(self._get("/me/messages", {"$top": min(MAX_PAGE_SIZE, MessageListRequest.top)}))
 
     def get_message(self, MessageRequest: MessageRequest) -> Message:
-        return Message.model_validate(self._get(f"/me/messages/{self._id(MessageRequest.id)}"))
+        return Message.model_validate(self._get(f"/me/messages/{self._id(MessageRequest.id)}",prefer=(PREFER_TEXT_BODY,)))
 
     def update_message(self, messageUpdateRequest: MessageUpdateRequest) -> Message:
         return Message.model_validate(self._patch(f"/me/messages/{self._id(messageUpdateRequest.id)}", body=messageUpdateRequest.model_dump(exclude={"id"}, exclude_none=True)))
@@ -172,8 +177,6 @@ class OutlookService:
     def send_draft(self, draft_id: str) -> None:
         self._post(f"/me/messages/{self._id(draft_id)}/send")
 
-
-    # Subscriptions
     def post_subscription(self, subscriptionCreateRequest: SubscriptionCreateRequest) -> Subscription:
         return Subscription.model_validate(self._post("/subscriptions", body=subscriptionCreateRequest.model_dump(mode="json")))
 
