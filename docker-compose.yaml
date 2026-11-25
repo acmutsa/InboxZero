@@ -77,10 +77,11 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - DATABASE_URL=${DATABASE_URL}
 
-  # AI pipeline worker: same image as `api`, runs the RQ worker instead of uvicorn.
-  pipeline:
+  # RQ workers: same image as `api`, running `python -m app.worker <queue>`
+  # instead of uvicorn. One per queue so AI drafts never hold up syncing.
+  sync-worker: &worker
     build: ./api
-    command: ["python", "-m", "app.worker"]
+    command: ["python", "-m", "app.worker", "sync"] # sync new mail
     volumes:
       - ./api:/app # must match WORKDIR in api/Dockerfile
     networks:
@@ -103,6 +104,10 @@ services:
         condition: service_healthy
     restart: unless-stopped
     stop_grace_period: 30s # let an in-flight job finish on shutdown
+
+  draft-worker:
+    <<: *worker
+    command: ["python", "-m", "app.worker", "draft"] # AI pipeline: process_email
 
 volumes:
   redis-data:

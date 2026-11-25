@@ -18,20 +18,19 @@ RedisUrlStr = Annotated[RedisDsn, AfterValidator(str)]
 Secret32 = Annotated[str, Field(min_length=44)]
 
 class Config(BaseSettings):
-    # postgres 
+    #postgres
     POSTGRES_HOST:str 
     POSTGRES_PORT:int
     POSTGRES_USER:str 
     POSTGRES_PASSWORD:str
     POSTGRES_DB:str = "inbox-zero-db"
     POSTGRES_URL: PostgresUrlStr
-
-    # redis
+    #redis
     REDIS_HOST: str
     REDIS_PORT: int
     REDIS_URL: RedisUrlStr
-    REDIS_EMAIL_QUEUE: str = "email"
-
+    REDIS_SYNC_QUEUE: str = "sync"
+    REDIS_DRAFT_QUEUE: str = "draft"
     # google
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
@@ -49,7 +48,6 @@ class Config(BaseSettings):
     GMAIL_TIMEOUT_SECONDS: Annotated[float, Field(gt=0)] = 30
     GMAIL_PUBSUB_AUDIENCE: str  
     GMAIL_PUBSUB_SERVICE_ACCOUNT: str
-
     # outlook
     OUTLOOK_CLIENT_ID: str
     OUTLOOK_CLIENT_SECRET: str
@@ -59,17 +57,14 @@ class Config(BaseSettings):
     OUTLOOK_STATE_SECRET: Secret32
     OUTLOOK_STATE_EXPIRE_SECONDS: int = 600
     OUTLOOK_TIMEOUT_SECONDS: Annotated[float, Field(gt=0)] = 30
-
-    # app
+    #api
     ENVIRONMENT: str = "development"
     CORS: list[HttpUrl] = ["http://localhost:3000"]
     ALGORITHM: str = "HS256"
     SECRET_KEY: Secret32
     AUDIENCE: list[HttpUrl]
-
-    #api
+    #pipeline
     GEMINI_MODEL: str
-    
 
     model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8")
 
