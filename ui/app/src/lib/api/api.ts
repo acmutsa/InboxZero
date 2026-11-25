@@ -5,6 +5,7 @@ import {
   AuthorizationUrlSchema,
   CategoryStatsResponseSchema,
   ConnectGmailRequestSchema,
+  ConnectOutlookRequestSchema,
   CreateUserRequestSchema,
   DraftStatsResponseSchema,
   EmailAccountListSchema,
@@ -12,11 +13,15 @@ import {
   ErrorResponseSchema,
   GmailCallbackRequestSchema,
   GmailCallbackResponseSchema,
+  OutlookCallbackRequestSchema,
+  OutlookCallbackResponseSchema,
   UpdateUserRequestSchema,
   UserSchema,
   type ConnectGmailRequest,
+  type ConnectOutlookRequest,
   type CreateUserRequest,
   type GmailCallbackRequest,
+  type OutlookCallbackRequest,
   type UpdateUserRequest,
 } from "./types";
 
@@ -134,6 +139,20 @@ export function createApiClient(getToken: GetToken) {
         "/auth/google/callback",
         GmailCallbackResponseSchema,
         validate(GmailCallbackRequestSchema, body),
+      ),
+
+    // Outlook connection
+    connectOutlook: async (body: ConnectOutlookRequest) =>
+      post(
+        "/auth/outlook/connect-outlook",
+        AuthorizationUrlSchema,
+        validate(ConnectOutlookRequestSchema, body),
+      ),
+    completeOutlookConnection: async (body: OutlookCallbackRequest) =>
+      post(
+        "/auth/outlook/callback",
+        OutlookCallbackResponseSchema,
+        validate(OutlookCallbackRequestSchema, body),
       ),
 
     // Stats

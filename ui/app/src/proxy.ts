@@ -6,6 +6,7 @@ const isProtectedRoute = createRouteMatcher([
   "/profile(.*)",
   "/registration(.*)",
   "/auth/google(.*)",
+  "/auth/outlook(.*)",
 ]);
 
 export default demoMode ? () => NextResponse.next() : clerkMiddleware(async (auth, req) => {

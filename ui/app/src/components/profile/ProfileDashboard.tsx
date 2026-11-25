@@ -4,7 +4,7 @@ import { useClerk } from '@clerk/nextjs';
 import { useState } from 'react';
 import { toApiError } from '@/lib/api/api';
 import { useApi, useApiQuery, type ApiQuery } from '@/lib/api/hooks';
-import type { EmailAccount, User } from '@/lib/api/types';
+import type { EmailAccount, EmailProvider, User } from '@/lib/api/types';
 import { loadAccountStats, summarizeStats } from '@/lib/email-stats';
 import InboxPanel from '@/components/InboxPanel';
 import FloatingNavbar from '@/components/FloatingNavbar';
@@ -54,20 +54,23 @@ export default function ProfileDashboard({
   const firstName = user.first_name ?? '';
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
   const [addOpen, setAddOpen] = useState(false);
-  const [gmail, setGmail] = useState('');
-  const [connecting, setConnecting] = useState(false);
+  const [email, setEmail] = useState('');
+  const [connecting, setConnecting] = useState<EmailProvider | null>(null);
   const [connectError, setConnectError] = useState('');
   const [accountError, setAccountError] = useState('');
 
-  async function connectGmail() {
-    setConnecting(true);
+  async function connect(provider: EmailProvider) {
+    setConnecting(provider);
     setConnectError('');
     try {
-      const { authorization_url } = await api.connectGmail({ gmail: gmail.trim() });
+      const { authorization_url } =
+        provider === 'gmail'
+          ? await api.connectGmail({ gmail: email.trim() })
+          : await api.connectOutlook({ outlook: email.trim() });
       window.location.assign(authorization_url);
     } catch (caught) {
       setConnectError(toApiError(caught).message);
-      setConnecting(false);
+      setConnecting(null);
     }
   }
 
@@ -143,7 +146,7 @@ export default function ProfileDashboard({
             </div>
             {emailAccounts.isLoading && !emailAccounts.data && <p>Loading email accounts…</p>}
             {emailAccounts.data && accounts.length === 0 && (
-              <p>No email accounts connected yet. Use “Add email” to connect Gmail.</p>
+              <p>No email accounts connected yet. Use “Add email” to connect Gmail or Outlook.</p>
             )}
             {emailAccounts.error && <p role="alert">{emailAccounts.error.message}</p>}
             {accountError && <p role="alert">{accountError}</p>}
@@ -185,33 +188,35 @@ export default function ProfileDashboard({
         <DialogContent className={dialogStyles['preview-dialog']}>
           <DialogTitle>Add an email account</DialogTitle>
           <DialogDescription>
-            Enter the Gmail address to connect. You&apos;ll sign in to that account on Google.
+            Enter the address to connect. You&apos;ll sign in to that account on Google or Microsoft.
           </DialogDescription>
           <form
-            id="connect-gmail-form"
+            id="connect-email-form"
             className="flex flex-col gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              void connectGmail();
+              const { submitter } = e.nativeEvent as SubmitEvent;
+              const isOutlook = submitter instanceof HTMLButtonElement && submitter.value === 'outlook';
+              void connect(isOutlook ? 'outlook' : 'gmail');
             }}
           >
-            <Label htmlFor="gmail-address">Gmail address</Label>
+            <Label htmlFor="email-address">Email address</Label>
             <Input
-              id="gmail-address"
+              id="email-address"
               type="email"
               autoComplete="email"
               required
-              placeholder="you@gmail.com"
-              value={gmail}
-              onChange={(e) => setGmail(e.target.value)}
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </form>
           {connectError && <small role="alert">{connectError}</small>}
-          <Button type="submit" form="connect-gmail-form" disabled={connecting}>
-            {connecting ? 'Redirecting to Google…' : 'Continue with Google'}
+          <Button type="submit" form="connect-email-form" value="gmail" disabled={connecting !== null}>
+            {connecting === 'gmail' ? 'Redirecting to Google…' : 'Continue with Google'}
           </Button>
-          <Button variant="outline" disabled>
-            Continue with Microsoft (coming soon)
+          <Button type="submit" form="connect-email-form" value="outlook" variant="outline" disabled={connecting !== null}>
+            {connecting === 'outlook' ? 'Redirecting to Microsoft…' : 'Continue with Microsoft'}
           </Button>
           <Button variant="outline" onClick={() => setAddOpen(false)}>
             Cancel

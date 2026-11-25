@@ -72,6 +72,24 @@ export const GmailCallbackResponseSchema = z.object({
 });
 export type GmailCallbackResponse = z.infer<typeof GmailCallbackResponseSchema>;
 
+// Outlook connection (api/app/email_service/outlook/router.py)
+export const ConnectOutlookRequestSchema = z.object({
+  outlook: z.email("Enter a valid email address."),
+});
+export type ConnectOutlookRequest = z.infer<typeof ConnectOutlookRequestSchema>;
+
+export const OutlookCallbackRequestSchema = z.object({
+  code: z.string().min(1),
+  state: z.string().min(1),
+});
+export type OutlookCallbackRequest = z.infer<typeof OutlookCallbackRequestSchema>;
+
+export const OutlookCallbackResponseSchema = z.object({
+  email: z.string(),
+  connected: z.boolean(),
+});
+export type OutlookCallbackResponse = z.infer<typeof OutlookCallbackResponseSchema>;
+
 // Stats (api/app/repositories/stats.py)
 
 export const CategoryStatsResponseSchema = z.array(
