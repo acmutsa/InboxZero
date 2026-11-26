@@ -4,6 +4,7 @@ import uuid
 from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi import Query
 from fastapi import status
 
 from sqlalchemy.exc import IntegrityError
@@ -17,12 +18,20 @@ from app.email_service.gmail.router import auth_gmail_router
 from app.email_service.outlook.router import auth_outlook_router
 from app.email_service.gmail.webhook import webhook_gmail_router
 from app.email_service.outlook.webhook import webhook_outlook_router
+from app.db.schema import DraftStatus
 from app.models.decoded_jwt import DecodedJWT
+from app.models.draft_response import DraftResponse
 from app.models.email_account_response import EmailAccountResponse
+from app.models.email_response import EmailResponse
 from app.models.register_user_request import RegisterUserRequest
+from app.models.update_draft_request import UpdateDraftRequest
 from app.models.update_user_request import UpdateUserRequest
 from app.models.user_response import UserResponse
 from app.repositories.category import create_default_categories
+from app.repositories.draft import draft_find_one_by_id_and_user_id
+from app.repositories.draft import draft_update
+from app.repositories.draft import drafts_find_all_by_user
+from app.repositories.email import emails_find_all_by_user
 from app.repositories.email_account import email_account_disconnect
 from app.repositories.email_account import email_account_find_one_by_email_id_and_user_id
 from app.repositories.email_account import email_accounts_find_all_by_user
@@ -325,3 +334,107 @@ def emailDrafts_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve draft statistics. Please try again later.",
         )
+
+
+@app.get(
+    "/api/emails/find-all",
+    response_model=list[EmailResponse],
+    status_code=status.HTTP_200_OK,
+)
+def find_all_emails_endpoint(
+    decoded_jwt: DecodedJWT = Depends(decode),
+    db: Session = Depends(get_db),
+):
+    try:
+        user = user_find_one_by_clerk_id(db, decoded_jwt.user_id)
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
+            )
+
+        emails = emails_find_all_by_user(db, user.id)
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve emails. Please try again later.",
+        )
+
+    return [EmailResponse.from_email(email) for email in emails]
+
+@app.get(
+    "/api/drafts/find-all",
+    response_model=list[DraftResponse],
+    status_code=status.HTTP_200_OK,
+)
+def find_all_drafts_endpoint(
+    draft_status: DraftStatus = Query(alias="status"),
+    decoded_jwt: DecodedJWT = Depends(decode),
+    db: Session = Depends(get_db),
+):
+    try:
+        user = user_find_one_by_clerk_id(db, decoded_jwt.user_id)
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
+            )
+
+        drafts = drafts_find_all_by_user(db, user.id, draft_status)
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve drafts. Please try again later.",
+        )
+
+    return drafts
+
+@app.patch(
+    "/api/drafts/update/{draft_id}",
+    response_model=DraftResponse,
+    status_code=status.HTTP_200_OK,
+)
+def update_draft_endpoint(
+    draft_id: uuid.UUID,
+    body: UpdateDraftRequest,
+    decoded_jwt: DecodedJWT = Depends(decode),
+    db: Session = Depends(get_db),
+):
+    try:
+        user = user_find_one_by_clerk_id(db, decoded_jwt.user_id)
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
+            )
+
+        draft = draft_find_one_by_id_and_user_id(db, draft_id, user.id)
+
+        if draft is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found.",
+            )
+
+        if draft.status == DraftStatus.sent:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="This draft was already sent.",
+            )
+
+        draft = draft_update(db, draft, body.body, body.status)
+
+        if draft is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="This draft was already sent.",
+            )
+
+        db.commit()
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update draft. Please try again later.",
+        )
+
+    return draft

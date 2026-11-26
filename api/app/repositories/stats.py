@@ -13,14 +13,17 @@ def email_counts_by_category(
     db: Session,
     email_account_id: uuid.UUID,
 ) -> list[dict]:
+    # Outer join so emails the AI hasn't categorized yet still count.
+    category_name = func.coalesce(Category.category_name, "Uncategorized")
     rows = db.execute(
         select(
-            Category.category_name,
+            category_name,
             func.count(Email.id),
         )
-        .join(Email, Email.category_id == Category.id)
+        .select_from(Email)
+        .outerjoin(Category, Email.category_id == Category.id)
         .where(Email.email_account_id == email_account_id)
-        .group_by(Category.category_name)
+        .group_by(category_name)
     )
 
     return [

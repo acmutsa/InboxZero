@@ -13,7 +13,9 @@ import {
   X,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { sampleAccounts, type PreviewAccount } from '@/lib/preview-accounts';
+import { toApiError } from '@/lib/api/api';
+import { useApi, useApiQuery } from '@/lib/api/hooks';
+import type { Draft, Email, EmailAccount, EmailProvider } from '@/lib/api/types';
 import CalendarSkeleton from '@/components/profile/CalendarSkeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,9 +32,30 @@ import {
 } from '@/components/ui/select';
 import calendarStyles from '@/components/profile/WorkspaceCalendar.module.css';
 import inboxStyles from '@/components/InboxPanel.module.css';
-import { previewInbox, previewDrafts, previewUnreadIds, type PreviewMessage } from '@/lib/preview-messages';
+type Message = {
+  id: string;
+  sender: string;
+  email: string;
+  subject: string;
+  body: string;
+  reply: string;
+  provider: EmailProvider | '';
+  status: string;
+  from?: string;
+};
 
-type Message = PreviewMessage & { from?: string };
+const providerLabel = { gmail: 'Gmail', outlook: 'Outlook' };
+
+/** "9:42 AM" today, "Yesterday", otherwise a short date. */
+function formatTime(iso: string) {
+  const date = new Date(iso);
+  const days = Math.round(
+    (new Date().setHours(0, 0, 0, 0) - new Date(iso).setHours(0, 0, 0, 0)) / 86_400_000,
+  );
+  if (days === 0) return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (days === 1) return 'Yesterday';
+  return date.toLocaleDateString();
+}
 
 const WorkspaceCalendar = dynamic(
   () => import('@/components/profile/WorkspaceCalendar'),
@@ -42,12 +65,20 @@ const WorkspaceCalendar = dynamic(
 );
 
 export default function InboxPanel({
-  name = 'Maya',
-  accounts = sampleAccounts,
+  accounts,
+  onApprove,
 }: {
-  name?: string;
-  accounts?: PreviewAccount[];
+  accounts: EmailAccount[];
+  /** Called after a draft is approved, so the dashboard can refresh its stats. */
+  onApprove?: () => void;
 }) {
+  const api = useApi();
+  // Keyed on the connected accounts so connecting/disconnecting one refetches the lists.
+  const accountKey = accounts.map((account) => account.id).join(',');
+  const emails = useApiQuery(`emails:${accountKey}`, (client) => client.getEmails());
+  const drafts = useApiQuery(`drafts:in_review:${accountKey}`, (client) => client.getDrafts('in_review'));
+  const sent = useApiQuery(`drafts:sent:${accountKey}`, (client) => client.getDrafts('sent'));
+  const [saving, setSaving] = useState(false);
   const [workspaceNode, setWorkspaceNode] = useState<HTMLDivElement | null>(
     null,
   );
@@ -62,24 +93,58 @@ export default function InboxPanel({
   const [selected, setSelected] = useState<Message | null>(null);
   const [editing, setEditing] = useState(false);
   const [reply, setReply] = useState('');
-  const [savedReplies, setSavedReplies] = useState<Record<string, string>>({});
-  const [approved, setApproved] = useState<string[]>([]);
-  const [sentMessages, setSentMessages] = useState<Message[]>([]);
   const [notice, setNotice] = useState('');
-  const [unreadIds, setUnreadIds] = useState(previewUnreadIds);
+  // shortcut: read/unread and archive live only in this tab (no DB columns yet); persist them when the schema has them.
+  const [unreadIds, setUnreadIds] = useState<string[]>([]);
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [archivedIds, setArchivedIds] = useState<string[]>([]);
   const [lastArchived, setLastArchived] = useState<string[]>([]);
-  const inboxCount = previewInbox.filter(
-    (message) => !archivedIds.includes(message.id),
-  ).length;
-  const draftCount = previewDrafts.filter((message) => !approved.includes(message.id)).length;
+  const accountOf = (accountId: string) =>
+    accounts.find((account) => account.id === accountId);
+  const emailById = new Map((emails.data ?? []).map((email) => [email.id, email]));
+  const draftedEmailIds = new Set((drafts.data ?? []).map((draft) => draft.reply_to_email));
+  const toInboxMessage = (email: Email): Message => ({
+    id: email.id,
+    sender: email.from_address,
+    email: email.from_address,
+    subject: email.subject ?? '(no subject)',
+    body: email.body ?? '',
+    reply: '',
+    provider: accountOf(email.email_account_id)?.provider ?? '',
+    status: `${draftedEmailIds.has(email.id) ? 'Draft ready' : (email.category ?? 'Uncategorized')} · ${formatTime(email.created_at)}`,
+  });
+  const toDraftMessage = (draft: Draft): Message => {
+    const original = draft.reply_to_email ? emailById.get(draft.reply_to_email) : undefined;
+    const provider = accountOf(draft.email_account_id)?.provider ?? '';
+    return {
+      id: draft.id,
+      sender: draft.to_address,
+      email: draft.to_address,
+      subject: original?.subject ?? draft.subject ?? '(no subject)',
+      body: original?.body ?? '',
+      reply: draft.body ?? '',
+      provider,
+      status: `${provider ? providerLabel[provider] : ''} · ${formatTime(draft.updated_at)}`,
+    };
+  };
+  const toSentMessage = (draft: Draft): Message => ({
+    ...toDraftMessage(draft),
+    subject: draft.subject ?? '(no subject)',
+    body: draft.body ?? '',
+    reply: '',
+    from: accountOf(draft.email_account_id)?.email_account,
+  });
+  const inboxMessages = (emails.data ?? [])
+    .filter((email) => !archivedIds.includes(email.id))
+    .map(toInboxMessage);
+  const draftMessages = (drafts.data ?? []).map(toDraftMessage);
+  const sentMessages = (sent.data ?? []).map(toSentMessage);
+  const inboxCount = inboxMessages.length;
+  const draftCount = draftMessages.length;
   const isDraft = tab === 'drafts';
-  const visible = (isDraft ? previewDrafts : previewInbox).filter(
+  const activeQuery = isDraft ? drafts : emails;
+  const visible = (isDraft ? draftMessages : inboxMessages).filter(
     (message) =>
-      (isDraft
-        ? !approved.includes(message.id)
-        : !archivedIds.includes(message.id)) &&
       (provider === 'all' || message.provider === provider) &&
       `${message.sender} ${message.subject} ${message.body}`
         .toLowerCase()
@@ -105,35 +170,31 @@ export default function InboxPanel({
     setCheckedIds([]);
   }
 
-  function approveReply(message: Message) {
-    if (!approved.includes(message.id)) {
-      setApproved((previous) => [...previous, message.id]);
-      setSentMessages((previous) => [
-        {
-          ...message,
-          id: `sent-${message.id}`,
-          subject: `Re: ${message.subject}`,
-          body: reply,
-          reply: '',
-          from:
-            accounts.find(
-              (account) =>
-                account.connected && account.provider === message.provider,
-            )?.email ?? message.provider,
-          status: `${message.provider} · Approved preview`,
-        },
-        ...previous,
-      ]);
+  async function saveDraft(message: Message, approve: boolean) {
+    setSaving(true);
+    try {
+      await api.updateDraft(message.id, approve ? { body: reply, status: 'sent' } : { body: reply });
+      drafts.reload();
+      if (approve) {
+        sent.reload();
+        onApprove?.();
+        setNotice('Reply approved. Sending is not connected yet, so no email was sent.');
+        closeMessage();
+      } else {
+        setEditing(false);
+      }
+    } catch (error) {
+      setNotice(toApiError(error).message);
+    } finally {
+      setSaving(false);
     }
-    setNotice('Reply approved in this preview. No email was sent.');
-    closeMessage();
   }
 
   function openMessage(message: Message) {
     if (tab === 'inbox')
       setUnreadIds((previous) => previous.filter((id) => id !== message.id));
     setSelected(message);
-    setReply(savedReplies[message.id] ?? `${message.reply}\n\nBest,\n${name}`);
+    setReply(message.reply);
     setEditing(false);
   }
 
@@ -182,22 +243,14 @@ export default function InboxPanel({
           {selected.subject}
         </h3>
         <p className="muted">
-          {selected.reply ? 'To' : 'From'}{' '}
-          {selected.sender} · {selected.email}
+          {selected.reply || tab === 'sent' ? 'To' : 'From'} {selected.email}
         </p>
       </header>
       <div className={inboxStyles['message-reader-body']}>
         <strong className="muted">
-          Original message
+          {tab === 'sent' ? 'Your reply' : 'Original message'}
         </strong>
-        <p className={inboxStyles['original-message']}>
-          Hi {name},<br />
-          <br />
-          {selected.body}
-          <br />
-          <br />
-          {selected.sender}
-        </p>
+        <p className={inboxStyles['original-message']}>{selected.body}</p>
       </div>
       {selected.reply && (
         <div className={inboxStyles['message-reader-reply']}>
@@ -215,21 +268,15 @@ export default function InboxPanel({
           )}
           {editing ? (
             <Button
-              disabled={!reply.trim()}
-              onClick={() => {
-                setSavedReplies((previous) => ({
-                  ...previous,
-                  [selected.id]: reply,
-                }));
-                setEditing(false);
-              }}
+              disabled={!reply.trim() || saving}
+              onClick={() => saveDraft(selected, false)}
             >
               Save changes
             </Button>
           ) : (
             <>
-              <Button onClick={() => approveReply(selected)}>
-                Approve and send
+              <Button disabled={saving} onClick={() => saveDraft(selected, true)}>
+                Approve reply
               </Button>
               <Button variant="outline" onClick={() => setEditing(true)}>
                 Edit reply
@@ -287,7 +334,7 @@ export default function InboxPanel({
           <TabsTrigger value="sent" title="Sent">
             <Send aria-hidden="true" />
             <span>Sent</span>
-            <span className={inboxStyles['workspace-tab-count']}>0</span>
+            <span className={inboxStyles['workspace-tab-count']}>{sentMessages.length}</span>
           </TabsTrigger>
           <TabsTrigger value="calendar" title="Calendar">
             <CalendarDays aria-hidden="true" />
@@ -352,8 +399,8 @@ export default function InboxPanel({
                 <SelectItem value="all">
                   {view === 'inbox' ? 'All messages' : 'All accounts'}
                 </SelectItem>
-                <SelectItem value="Gmail">Gmail</SelectItem>
-                <SelectItem value="Outlook">Outlook</SelectItem>
+                <SelectItem value="gmail">Gmail</SelectItem>
+                <SelectItem value="outlook">Outlook</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -490,20 +537,19 @@ export default function InboxPanel({
                         </strong>
                         <span>
                           {isDraft
-                            ? (savedReplies[message.id] ?? message.reply)
+                            ? message.reply
                             : message.body}
                         </span>
                       </span>
                       <span className={inboxStyles['message-status']}>
                         <span
                           className={inboxStyles['message-status-label']}
-                          data-kind={approved.includes(message.id) ? 'approved' : message.reply ? 'action' : 'muted'}
+                          data-kind={isDraft || message.status.startsWith('Draft ready') ? 'action' : 'muted'}
                         >
-                          {isDraft ? 'Draft ready' : approved.includes(message.id)
-                            ? 'Approved' : message.status.split(' · ')[0]}
+                          {isDraft ? 'Draft ready' : message.status.split(' · ')[0]}
                         </span>
                         <small>
-                          {isDraft ? message.provider : message.status.split(' · ')[1]}
+                          {message.status.split(' · ')[1]}
                         </small>
                         {isDraft && <strong>Review draft →</strong>}
                       </span>
@@ -511,8 +557,15 @@ export default function InboxPanel({
                   </div>
                 ))}
                 {visible.length === 0 && (
-                  <p className={inboxStyles['empty-state']}>
-                    {query || provider !== 'all'
+                  <p
+                    className={inboxStyles['empty-state']}
+                    role={activeQuery.error ? 'alert' : undefined}
+                  >
+                    {activeQuery.error
+                      ? activeQuery.error.message
+                      : activeQuery.isLoading && !activeQuery.data
+                        ? 'Loading…'
+                        : query || provider !== 'all'
                       ? 'No messages match your search.'
                       : view === 'inbox'
                         ? 'Your inbox is clear.'
@@ -534,7 +587,7 @@ export default function InboxPanel({
         <div className={inboxStyles['workspace-heading']}>
           <div>
             <h2>Sent messages</h2>
-            <p>Replies you approved in this preview.</p>
+            <p>Replies you approved. Sending is not connected yet.</p>
           </div>
           <strong>{sentMessages.length} sent</strong>
         </div>
@@ -571,8 +624,15 @@ export default function InboxPanel({
                 </div>
               ))}
               {!sentMessages.length && (
-                <p className={inboxStyles['empty-state']}>
-                  No sent messages yet. Approve a draft to see it here.
+                <p
+                  className={inboxStyles['empty-state']}
+                  role={sent.error ? 'alert' : undefined}
+                >
+                  {sent.error
+                    ? sent.error.message
+                    : sent.isLoading && !sent.data
+                      ? 'Loading…'
+                      : 'No sent messages yet. Approve a draft to see it here.'}
                 </p>
               )}
             </div>
