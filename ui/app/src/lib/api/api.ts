@@ -7,21 +7,27 @@ import {
   ConnectGmailRequestSchema,
   ConnectOutlookRequestSchema,
   CreateUserRequestSchema,
+  DraftListSchema,
+  DraftSchema,
   DraftStatsResponseSchema,
   EmailAccountListSchema,
   EmailAccountSchema,
+  EmailListSchema,
   ErrorResponseSchema,
   GmailCallbackRequestSchema,
   GmailCallbackResponseSchema,
   OutlookCallbackRequestSchema,
   OutlookCallbackResponseSchema,
+  UpdateDraftRequestSchema,
   UpdateUserRequestSchema,
   UserSchema,
   type ConnectGmailRequest,
   type ConnectOutlookRequest,
   type CreateUserRequest,
+  type DraftStatus,
   type GmailCallbackRequest,
   type OutlookCallbackRequest,
+  type UpdateDraftRequest,
   type UpdateUserRequest,
 } from "./types";
 
@@ -153,6 +159,17 @@ export function createApiClient(getToken: GetToken) {
         "/auth/outlook/callback",
         OutlookCallbackResponseSchema,
         validate(OutlookCallbackRequestSchema, body),
+      ),
+
+    // Inbox
+    getEmails: () => get("/api/emails/find-all", EmailListSchema),
+    getDrafts: (status: DraftStatus) =>
+      get(`/api/drafts/find-all?status=${id(status)}`, DraftListSchema),
+    updateDraft: async (draftId: string, body: UpdateDraftRequest) =>
+      patch(
+        `/api/drafts/update/${id(draftId)}`,
+        DraftSchema,
+        validate(UpdateDraftRequestSchema, body),
       ),
 
     // Stats

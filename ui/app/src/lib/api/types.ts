@@ -105,6 +105,49 @@ export const DraftStatsResponseSchema = z.object({
 });
 export type DraftStatsResponse = z.infer<typeof DraftStatsResponseSchema>;
 
+// Inbox (api/app/models/email_response.py, draft_response.py, update_draft_request.py)
+
+/** EmailResponse */
+export const EmailSchema = z.object({
+  id: z.uuid(),
+  email_account_id: z.uuid(),
+  from_address: z.string(),
+  subject: z.string().nullable(),
+  body: z.string().nullable(),
+  category: z.string().nullable(),
+  created_at: z.string(), // ISO 8601
+});
+export type Email = z.infer<typeof EmailSchema>;
+
+export const EmailListSchema = z.array(EmailSchema);
+
+/** DraftStatus */
+export const DraftStatusSchema = z.enum(["in_review", "sent"]);
+export type DraftStatus = z.infer<typeof DraftStatusSchema>;
+
+/** DraftResponse */
+export const DraftSchema = z.object({
+  id: z.uuid(),
+  email_account_id: z.uuid(),
+  reply_to_email: z.uuid().nullable(),
+  to_address: z.string(),
+  subject: z.string().nullable(),
+  body: z.string().nullable(),
+  status: DraftStatusSchema,
+  created_at: z.string(), // ISO 8601
+  updated_at: z.string(), // ISO 8601
+});
+export type Draft = z.infer<typeof DraftSchema>;
+
+export const DraftListSchema = z.array(DraftSchema);
+
+/** UpdateDraftRequest */
+export const UpdateDraftRequestSchema = z.object({
+  body: z.string().trim().min(1, "The reply can't be empty.").optional(),
+  status: DraftStatusSchema.optional(),
+});
+export type UpdateDraftRequest = z.infer<typeof UpdateDraftRequestSchema>;
+
 // Errors
 
 // FastAPI returns `detail` as a string for HTTPException and as a list
