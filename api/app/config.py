@@ -67,7 +67,8 @@ class Config(BaseSettings):
     #pipeline
     GEMINI_MODEL: str
 
-    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8")
+    # extra="ignore": the root .env is shared with the UI (NEXT_PUBLIC_* keys).
+    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     @property
     def get_cors_list(self) -> list[str]:

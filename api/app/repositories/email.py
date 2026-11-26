@@ -1,10 +1,13 @@
 import uuid
 
+from sqlalchemy import select
 from sqlalchemy import update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import selectinload
 
 from app.db.schema import Email
+from app.db.schema import EmailAccount
 
 
 def create_email(
@@ -43,3 +46,16 @@ def email_set_category(
     category_id: uuid.UUID,
 ) -> None:
     db.execute(update(Email).where(Email.id == email_id).values(category_id=category_id))
+
+
+def emails_find_all_by_user(
+    db: Session,
+    user_id: uuid.UUID,
+) -> list[Email]:
+    return list(db.scalars(
+        select(Email)
+        .join(EmailAccount, Email.email_account_id == EmailAccount.id)
+        .where(EmailAccount.user_id == user_id, EmailAccount.deleted_at.is_(None))
+        .options(selectinload(Email.category))
+        .order_by(Email.created_at.desc())
+    ))
