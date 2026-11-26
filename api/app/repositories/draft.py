@@ -1,6 +1,8 @@
 import uuid
 
+from sqlalchemy import func
 from sqlalchemy import select
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.db.schema import Draft
@@ -74,10 +76,16 @@ def draft_update(
     draft: Draft,
     body: str | None,
     status: DraftStatus | None,
-) -> Draft:
-    if body is not None:
-        draft.body = body
-    if status is not None:
-        draft.status = status
-    db.flush()
+) -> Draft | None:
+    """Update a draft that is still in review; None if it was approved meanwhile."""
+    values = {key: value for key, value in {"body": body, "status": status}.items() if value is not None}
+    # Conditional UPDATE so two approves at once can't both win.
+    updated = db.execute(
+        update(Draft)
+        .where(Draft.id == draft.id, Draft.status == DraftStatus.in_review)
+        .values(**values, updated_at=func.now())
+    ).rowcount
+    if not updated:
+        return None
+    db.refresh(draft)
     return draft

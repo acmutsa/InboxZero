@@ -94,7 +94,7 @@ def _save_draft(
                 references=thread.reply_references,
             )
         )
-        saved.gmail_draft_id = gmail_draft.id
+        saved.provider_draft_id = gmail_draft.id
         db.commit()
 
     logger.info(

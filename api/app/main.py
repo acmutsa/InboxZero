@@ -423,6 +423,12 @@ def update_draft_endpoint(
             )
 
         draft = draft_update(db, draft, body.body, body.status)
+
+        if draft is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="This draft was already sent.",
+            )
+
         db.commit()
 
     except SQLAlchemyError:

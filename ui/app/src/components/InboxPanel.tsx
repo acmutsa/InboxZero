@@ -66,8 +66,11 @@ const WorkspaceCalendar = dynamic(
 
 export default function InboxPanel({
   accounts,
+  onApprove,
 }: {
   accounts: EmailAccount[];
+  /** Called after a draft is approved, so the dashboard can refresh its stats. */
+  onApprove?: () => void;
 }) {
   const api = useApi();
   // Keyed on the connected accounts so connecting/disconnecting one refetches the lists.
@@ -174,6 +177,7 @@ export default function InboxPanel({
       drafts.reload();
       if (approve) {
         sent.reload();
+        onApprove?.();
         setNotice('Reply approved. Sending is not connected yet, so no email was sent.');
         closeMessage();
       } else {
