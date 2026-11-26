@@ -1,4 +1,4 @@
-from app.ai_pipeline.reply_draft import build_reply_draft_request
+from app.email_service.gmail.convert import to_reply_draft_request
 from app.db.schema import EmailAccount
 from app.email_service.gmail.convert import to_email_message
 from app.email_service.gmail.convert import to_email_thread
@@ -12,7 +12,7 @@ from app.email_service.gmail.types.thread import ThreadRequest
 from app.email_service.provider import EmailProvider
 from app.email_service.types.draft import ReplyDraft
 from app.email_service.types.message import EmailMessage
-from app.email_service.types.message import EmailThread
+from app.email_service.types.thread import EmailThread
 
 
 CATEGORY_LABEL_PREFIX = "InboxZero/"
@@ -29,7 +29,7 @@ class GmailProvider(EmailProvider):
         return to_email_thread(self._gmail.get_thread(ThreadRequest(id=thread_id, format="metadata")))
 
     def create_reply_draft(self, original: EmailMessage, reply: ReplyDraft) -> str:
-        request = build_reply_draft_request(
+        request = to_reply_draft_request(
             to_address=reply.to_address,
             subject=reply.subject,
             body=reply.body,

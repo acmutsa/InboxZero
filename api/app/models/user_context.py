@@ -24,6 +24,7 @@ class UserContext(BaseModel):
     last_name: str | None = None
     categories: tuple[CategoryOption, ...] = ()
 
+    # a field validator that is run after pydantic that checks make the first/ last name that have "" into None
     @field_validator("first_name", "last_name", mode="after")
     @classmethod
     def blank_is_none(cls, value: str | None) -> str | None:

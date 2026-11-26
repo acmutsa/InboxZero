@@ -3,7 +3,7 @@ from abc import abstractmethod
 
 from app.email_service.types.draft import ReplyDraft
 from app.email_service.types.message import EmailMessage
-from app.email_service.types.message import EmailThread
+from app.email_service.types.thread import EmailThread
 
 
 class EmailProvider(ABC):

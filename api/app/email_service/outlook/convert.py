@@ -5,7 +5,7 @@ from app.email_service.outlook.types.message import Message
 from app.email_service.outlook.types.message import Recipient
 from app.email_service.types.message import EmailMessage
 from app.email_service.types.message import MessageLabel
-from app.email_service.types.message import EmailThread
+from app.email_service.types.thread import EmailThread
 
 
 @dataclass(frozen=True)

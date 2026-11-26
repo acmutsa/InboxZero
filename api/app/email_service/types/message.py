@@ -51,10 +51,3 @@ class EmailMessage(BaseModel):
         if message_id and message_id not in references:
             references.append(message_id)
         return references
-
-
-class EmailThread(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    id: str
-    messages: list[EmailMessage] = []

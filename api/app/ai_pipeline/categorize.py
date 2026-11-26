@@ -2,8 +2,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.ai_pipeline.thread_context import ThreadContext
-from app.ai_pipeline.user_context import CategoryOption
+from app.models.user_context import CategoryOption
 from app.constants import DEFAULT_CATEGORIES
 from app.db.schema import Category
 from app.email_service.types.message import MessageLabel
@@ -12,11 +11,11 @@ from app.repositories.category import category_find_all_by_user_id
 CATEGORIZE_SKIP_LABELS = {MessageLabel.DRAFT, MessageLabel.SPAM, MessageLabel.TRASH, MessageLabel.SENT}
 
 
-def categorize_skip_reason(labels, thread: ThreadContext, categories: tuple[CategoryOption, ...]) -> str | None:
+def categorize_skip_reason(labels, is_reply: bool, categories: tuple[CategoryOption, ...]) -> str | None:
     skipped = set(labels) & CATEGORIZE_SKIP_LABELS
     if skipped:
         return f"label: {', '.join(sorted(skipped))}"
-    if thread.is_reply:
+    if is_reply:
         return "part of an existing thread"
     if not categories:
         return "no categories"

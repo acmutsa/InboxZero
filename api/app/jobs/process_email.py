@@ -2,15 +2,11 @@ import logging
 import uuid
 
 from app.ai_pipeline.settings import pipeline_settings
-from app.ai_pipeline.states import DraftValidate
-from app.ai_pipeline.states import EmailState
-from app.ai_pipeline.thread_context import build_previous_message
-from app.ai_pipeline.thread_context import build_thread_context
-from app.ai_pipeline.thread_context import find_previous_message_id
-from app.ai_pipeline.thread_context import strip_quoted_reply
-from app.ai_pipeline.thread_context import truncate
+from app.ai_pipeline.types.draft_validate import DraftValidate
+from app.ai_pipeline.types.email_state import EmailState
+from app.ai_pipeline.llm_input import strip_quoted_reply,truncate
 from app.ai_pipeline.categorize import load_category_options
-from app.ai_pipeline.user_context import UserContext
+from app.models.user_context import UserContext
 from app.db.session import SessionLocal
 from app.email_service.provider import EmailProvider
 from app.email_service.registry import get_email_provider
@@ -18,7 +14,7 @@ from app.email_service.types.draft import ReplyDraft
 from app.email_service.types.error import EmailServiceError
 from app.email_service.types.error import UnsupportedProviderError
 from app.email_service.types.message import EmailMessage
-from app.email_service.types.message import EmailThread
+from app.email_service.types.thread import EmailThread
 from app.repositories.draft import draft_create_for_email
 from app.repositories.draft import draft_find_one_by_email_id
 from app.repositories.email import email_find_one_by_email_id
@@ -43,7 +39,7 @@ def process_email(email_id: str) -> None:
         "Email processed",
         extra={
             "email_id": email_id,
-            "thread_id": state["thread"].thread_id,
+            "thread_id": state["thread"].id,
             "skip_reason": result.get("skip_reason"),
             "category": result["category"].name if result.get("category") else None,
             "categorize_skip_reason": result.get("categorize_skip_reason"),
@@ -109,12 +105,9 @@ def build_initial_state(
         "label_ids": sorted(message.labels),
         "headers": dict(message.headers),
         "body": body,
-        "thread": build_thread_context(message, thread),
-        "previous_message": (
-            build_previous_message(previous, pipeline_settings.previous_message_max_chars)
-            if previous is not None
-            else None
-        ),
+        "message": message,
+        "thread": thread,
+        "previous_message": previous,
         "raw_output": None,
         "parsed": None,
         "bin_result": None,
@@ -176,7 +169,7 @@ def _load_email(
         raise
 
     previous = None
-    previous_id = find_previous_message_id(message, thread)
+    previous_id = thread.previous_message_id(message)
     if previous_id is not None:
         try:
             previous = provider.get_message(previous_id)

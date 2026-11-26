@@ -7,9 +7,9 @@ from langchain.agents.middleware import AgentMiddleware
 from langchain.agents.middleware import ModelRequest
 from langchain.agents.middleware import dynamic_prompt
 
-from app.ai_pipeline.user_context import FALLBACK_NAME
-from app.ai_pipeline.user_context import CategoryOption
-from app.ai_pipeline.user_context import UserContext
+from app.models.user_context import FALLBACK_NAME
+from app.models.user_context import CategoryOption
+from app.models.user_context import UserContext
 
 SIGN_OFF_PLACEHOLDER = "[your name]"
 

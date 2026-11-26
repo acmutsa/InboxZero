@@ -20,7 +20,7 @@ from app.email_service.outlook.types.thread import ThreadRequest
 from app.email_service.provider import EmailProvider
 from app.email_service.types.draft import ReplyDraft
 from app.email_service.types.message import EmailMessage
-from app.email_service.types.message import EmailThread
+from app.email_service.types.thread import EmailThread
 
 
 class OutlookProvider(EmailProvider):
