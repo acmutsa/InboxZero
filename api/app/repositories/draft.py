@@ -55,3 +55,29 @@ def drafts_find_all_by_user(
         .where(EmailAccount.user_id == user_id, EmailAccount.deleted_at.is_(None), Draft.status == status)
         .order_by(Draft.updated_at.desc())
     ))
+
+
+def draft_find_one_by_id_and_user_id(
+    db: Session,
+    draft_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> Draft | None:
+    return db.scalar(
+        select(Draft)
+        .join(EmailAccount, Draft.email_account_id == EmailAccount.id)
+        .where(Draft.id == draft_id, EmailAccount.user_id == user_id, EmailAccount.deleted_at.is_(None))
+    )
+
+
+def draft_update(
+    db: Session,
+    draft: Draft,
+    body: str | None,
+    status: DraftStatus | None,
+) -> Draft:
+    if body is not None:
+        draft.body = body
+    if status is not None:
+        draft.status = status
+    db.flush()
+    return draft

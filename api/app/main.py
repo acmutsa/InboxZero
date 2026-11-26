@@ -24,9 +24,12 @@ from app.models.draft_response import DraftResponse
 from app.models.email_account_response import EmailAccountResponse
 from app.models.email_response import EmailResponse
 from app.models.register_user_request import RegisterUserRequest
+from app.models.update_draft_request import UpdateDraftRequest
 from app.models.update_user_request import UpdateUserRequest
 from app.models.user_response import UserResponse
 from app.repositories.category import create_default_categories
+from app.repositories.draft import draft_find_one_by_id_and_user_id
+from app.repositories.draft import draft_update
 from app.repositories.draft import drafts_find_all_by_user
 from app.repositories.email import emails_find_all_by_user
 from app.repositories.email_account import email_account_disconnect
@@ -387,3 +390,45 @@ def find_all_drafts_endpoint(
         )
 
     return drafts
+
+@app.patch(
+    "/api/drafts/update/{draft_id}",
+    response_model=DraftResponse,
+    status_code=status.HTTP_200_OK,
+)
+def update_draft_endpoint(
+    draft_id: uuid.UUID,
+    body: UpdateDraftRequest,
+    decoded_jwt: DecodedJWT = Depends(decode),
+    db: Session = Depends(get_db),
+):
+    try:
+        user = user_find_one_by_clerk_id(db, decoded_jwt.user_id)
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Account not found. Please create an account first.",
+            )
+
+        draft = draft_find_one_by_id_and_user_id(db, draft_id, user.id)
+
+        if draft is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found.",
+            )
+
+        if draft.status == DraftStatus.sent:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="This draft was already sent.",
+            )
+
+        draft = draft_update(db, draft, body.body, body.status)
+        db.commit()
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update draft. Please try again later.",
+        )
+
+    return draft
