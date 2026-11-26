@@ -70,9 +70,11 @@ export default function InboxPanel({
   accounts: EmailAccount[];
 }) {
   const api = useApi();
-  const emails = useApiQuery('emails', (client) => client.getEmails());
-  const drafts = useApiQuery('drafts:in_review', (client) => client.getDrafts('in_review'));
-  const sent = useApiQuery('drafts:sent', (client) => client.getDrafts('sent'));
+  // Keyed on the connected accounts so connecting/disconnecting one refetches the lists.
+  const accountKey = accounts.map((account) => account.id).join(',');
+  const emails = useApiQuery(`emails:${accountKey}`, (client) => client.getEmails());
+  const drafts = useApiQuery(`drafts:in_review:${accountKey}`, (client) => client.getDrafts('in_review'));
+  const sent = useApiQuery(`drafts:sent:${accountKey}`, (client) => client.getDrafts('sent'));
   const [saving, setSaving] = useState(false);
   const [workspaceNode, setWorkspaceNode] = useState<HTMLDivElement | null>(
     null,
@@ -172,7 +174,7 @@ export default function InboxPanel({
       drafts.reload();
       if (approve) {
         sent.reload();
-        setNotice('Reply approved.');
+        setNotice('Reply approved. Sending is not connected yet, so no email was sent.');
         closeMessage();
       } else {
         setEditing(false);
@@ -270,7 +272,7 @@ export default function InboxPanel({
           ) : (
             <>
               <Button disabled={saving} onClick={() => saveDraft(selected, true)}>
-                Approve and send
+                Approve reply
               </Button>
               <Button variant="outline" onClick={() => setEditing(true)}>
                 Edit reply
@@ -581,7 +583,7 @@ export default function InboxPanel({
         <div className={inboxStyles['workspace-heading']}>
           <div>
             <h2>Sent messages</h2>
-            <p>Replies you approved.</p>
+            <p>Replies you approved. Sending is not connected yet.</p>
           </div>
           <strong>{sentMessages.length} sent</strong>
         </div>
