@@ -154,7 +154,7 @@ export default function ProfileDashboard({
         </div>
       </section>
       <section id="workspace" aria-label="Email workspace">
-        <InboxPanel name={firstName} />
+        <InboxPanel accounts={accounts} />
       </section>
       <section id="activity" className={profileStyles['page-section']} aria-labelledby="activity-title">
         <Card className={`${profileStyles['activity-panel']} glass-surface`}>
