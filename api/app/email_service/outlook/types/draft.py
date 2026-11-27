@@ -24,14 +24,17 @@ class DraftCreateRequest(BaseModel):
     @classmethod
     def from_email_draft_create_request(cls, request: EmailReplyDraftRequest) -> DraftCreateRequest:
         mime = MimeMessage()
-        mime["To"] = ", ".join(request.to)
+        if request.to:
+            mime["To"] = ", ".join(request.to)
         if request.cc:
             mime["Cc"] = ", ".join(request.cc)
-        mime["Subject"] = request.subject
-        if request.in_reply_to:
-            mime["In-Reply-To"] = request.in_reply_to
+        if request.subject:
+            mime["Subject"] = request.subject
+        if request.reply_to_id:
+            mime["In-Reply-To"] = request.reply_to_id
         if request.references:
             mime["References"] = " ".join(request.references)
+            
         mime.set_content(request.body, subtype="html" if request.is_html else "plain")
 
         return DraftCreateRequest(
