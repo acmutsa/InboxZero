@@ -38,7 +38,7 @@ class DraftCreateRequest(BaseModel):
         mime.set_content(request.body, subtype="html" if request.is_html else "plain")
 
         return DraftCreateRequest(
-            id=request.original_message_id, mime=base64.b64encode(mime.as_bytes()).decode("ascii")
+            id=request.reply_to_id, mime=base64.b64encode(mime.as_bytes()).decode("ascii")
         )
 
 class DraftRequest(MessageRequest):
