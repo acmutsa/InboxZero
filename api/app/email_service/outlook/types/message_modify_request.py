@@ -5,3 +5,7 @@ class MessageUpdateRequest(BaseModel):
     id: str
     categories: Optional[list[str]] = None
     isRead: Optional[bool] = None
+
+class MessageMoveRequest(BaseModel):
+    id: str
+    destinationId: str   

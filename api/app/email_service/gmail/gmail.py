@@ -20,7 +20,7 @@ from app.email_service.gmail.types.error import GmailServiceError
 
 from app.email_service.gmail.types.label import LabelList
 from app.email_service.gmail.types.label import Label
-from app.email_service.gmail.types.label import LablelCreateRequest
+from app.email_service.gmail.types.label import LabelCreateRequest
 
 from app.email_service.gmail.types.message_list_request import MessageListRequest
 from app.email_service.gmail.types.message_list import MessageList
@@ -123,13 +123,13 @@ class GmailService:
 
 
     # Labels
-    def get_labels(self) -> list[Label]:
-        return LabelList.model_validate(self._get("/labels")).labels
+    def get_labels(self) -> LabelList:
+        return LabelList.model_validate(self._get("/labels"))
 
     def get_label(self, label_id: str) -> Label:
         return Label.model_validate(self._get(f"/labels/{label_id}"))
     
-    def post_label(self, labelCreateRequest: LablelCreateRequest) -> Label:
+    def post_label(self, labelCreateRequest: LabelCreateRequest) -> Label:
         return Label.model_validate(self._post("/labels", body=labelCreateRequest.model_dump(exclude_unset=True)))
     
     def delete_label(self, label_id: str) -> None:

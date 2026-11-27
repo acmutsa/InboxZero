@@ -1,12 +1,21 @@
-from typing import Literal, Optional
-from pydantic import AfterValidator, BaseModel
+from typing import Literal
+from typing import Optional
+from pydantic import BaseModel
 from app.email_service.types.category import EmailCategory
+from app.email_service.types.category import EmailCategoryList
+from app.email_service.types.category import EmailCategoryCreateRequest
 
-class LablelCreateRequest(BaseModel):
+class LabelCreateRequest(BaseModel):
     name: str
     labelListVisibility: Optional[Literal["labelShow", "labelShowIfUnread", "labelHide"]] = None
     messageListVisibility: Optional[Literal["show", "hide"]] = None
     color: Optional["LabelColor"] = None
+
+    @classmethod
+    def from_email_category_create_request(cls, category: EmailCategoryCreateRequest) -> LabelCreateRequest:
+        return cls(
+            name=category.name,
+        )
     
 class LabelColor(BaseModel):
     textColor: str
@@ -20,7 +29,7 @@ class Label(BaseModel):
     labelListVisibility: Optional[Literal["labelShow", "labelShowIfUnread", "labelHide"]] = None
     color: Optional[LabelColor] = None
 
-    def to_category(self) -> EmailCategory:
+    def to_email_category(self) -> EmailCategory:
         return EmailCategory(
             id=self.id,
             name=self.name,
@@ -29,3 +38,8 @@ class Label(BaseModel):
 
 class LabelList(BaseModel):
     labels: list[Label] = []
+
+    def to_email_categories(self) -> EmailCategoryList:
+        return EmailCategoryList(
+            categories=[label.to_email_category() for label in self.labels]
+        )
