@@ -5,8 +5,8 @@ from datetime import datetime
 from datetime import timezone
 from typing import Literal
 from typing import Optional
-
 from pydantic import BaseModel
+from app.email_service.types.message import EmailMessage
 
 class MessageHeader(BaseModel):
     name: str
@@ -61,13 +61,28 @@ class Message(BaseModel):
 
     @property
     def received_at(self) -> Optional[datetime]:
-        if self.internalDate is None:
-            return None
+        if self.internalDate is None: return None
         return datetime.fromtimestamp(int(self.internalDate) / 1000, tz=timezone.utc)
 
     @property
     def is_unread(self) -> bool:
         return "UNREAD" in self.labelIds
+
+    @property
+    def is_draft(self) -> bool:
+        return "DRAFT" in self.labelIds
+    
+    @property
+    def is_sent(self) -> bool:
+        return "SENT" in self.labelIds
+    
+    @property
+    def is_spam(self) -> bool:
+        return "SPAM" in self.labelIds
+
+    @property
+    def is_trash(self) -> bool:
+        return "TRASH" in self.labelIds
 
     def header(self, name: str) -> Optional[str]:
         if self.payload is None: return None
@@ -83,3 +98,16 @@ class Message(BaseModel):
 
     def decode_base64url(self, data: str) -> bytes:
         return base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))
+
+    def to_email(self) -> EmailMessage:
+        return EmailMessage(
+            id=self.id,
+            sender=self.sender,
+            cc=self.cc,
+            bcc=self.bcc,
+            subject=self.subject,
+            labels=self.labelIds,
+            text=self.text,
+            received_at=self.received_at,
+            thread_id=self.threadId or self.id,
+        )

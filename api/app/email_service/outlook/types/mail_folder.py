@@ -1,5 +1,6 @@
 from typing import Annotated, Optional
 from pydantic import AfterValidator, AnyHttpUrl, BaseModel, ConfigDict, Field
+from app.email_service.types.category import EmailCategory
 
 LinkStr = Annotated[AnyHttpUrl, AfterValidator(str)]
 
@@ -15,6 +16,13 @@ class MailFolder(BaseModel):
     totalItemCount: int = 0
     unreadItemCount: int = 0
     isHidden: Optional[bool] = None
+
+    def to_category(self) -> EmailCategory:
+        return EmailCategory(
+            id=self.id,
+            name=self.displayName or "",
+            parent_id=self.parentFolderId,
+        )
 
 class MailFolderList(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
