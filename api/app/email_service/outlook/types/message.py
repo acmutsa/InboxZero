@@ -1,6 +1,8 @@
 from datetime import datetime
+from email.utils import formataddr
 from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from app.email_service.types.message import EmailMessage
 
 class EmailAddress(BaseModel):
     address: Optional[str] = None
@@ -23,10 +25,12 @@ class Message(BaseModel):
     id: str
     conversationId: Optional[str] = None
     parentFolderId: Optional[str] = None
+    internetMessageId: Optional[str] = None
     subject: Optional[str] = None
     bodyPreview: Optional[str] = None
     body: Optional[ItemBody] = None
     from_user: Optional[Recipient] = Field(None, alias="from")
+    replyTo: list[Recipient] = []
     toRecipients: list[Recipient] = []
     ccRecipients: list[Recipient] = []
     bccRecipients: list[Recipient] = []
@@ -45,3 +49,17 @@ class Message(BaseModel):
         if self.body is None: return None
         wanted = "text" if mime_type == "text/plain" else "html"
         return self.body.content if self.body.contentType.lower() == wanted else None
+
+    def to_email(self) -> EmailMessage:
+        return EmailMessage(
+            id=self.internetMessageId,
+            sender=self.from_user,
+            cc=self.ccRecipients,
+            bcc=self.bccRecipients,
+            subject=self.subject,
+            labels=self.parentFolderId,
+            text=self.text,
+            received_at=self.receivedDateTime,
+            thread_id=self.conversationId,
+        )
+        

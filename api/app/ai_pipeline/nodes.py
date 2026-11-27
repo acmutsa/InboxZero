@@ -1,8 +1,7 @@
-from app.ai_pipeline.states import EmailState
+from api.app.ai_pipeline.types.states import EmailState
 from app.ai_pipeline.agents import agent_bin,agent_draft
 from app.ai_pipeline.llm_input import format_email_for_llm
 from app.ai_pipeline.categorize import categorize_skip_reason
-from app.ai_pipeline.thread_context import thread_skip_reason
 from app.db.session import SessionLocal
 from app.email_service.types.error import EmailServiceError
 from app.email_service.types.message import MessageLabel
@@ -28,13 +27,14 @@ def ai_draft_node(state: EmailState):
 
 
 def code_check_node(state:EmailState):
+    thread, message = state["thread"], state["message"]
     reason = (
         skip_reason(state["label_ids"], state["headers"], my_email=state["user"].email)
-        or thread_skip_reason(state["thread"])
+        or thread.skip_reason(message)
     )
     return {
         "skip_reason": reason,
-        "categorize_skip_reason": categorize_skip_reason(state["label_ids"], state["thread"], state["user"].categories),
+        "categorize_skip_reason": categorize_skip_reason(state["label_ids"], thread.is_reply(message), state["user"].categories),
     }
 
 

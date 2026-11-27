@@ -22,8 +22,8 @@ from app.auth import outlook_pubsub_token
 from app.db.schema import EmailServiceProvider
 from app.db.session import get_db
 from app.email_service.outlook.types.notification import OutlookNotificationList
-from app.queue.redis import enqueue_outlook
-from app.queue.redis import get_queue
+from app.queue.redis import enqueue_new_outlook
+from app.queue.redis import get_sync_queue
 from app.repositories.email_account import email_account_find_one_by_id
 
 webhook_outlook_router = APIRouter(prefix="/webhooks", tags=["outlook-webhook"])
@@ -38,11 +38,11 @@ def outlook_push_notification(
     body: Any = Body(None),
     validationToken: str | None = None,
     db: Session = Depends(get_db),
-    queue: Queue = Depends(get_queue),
+    queue: Queue = Depends(get_sync_queue),
 ):
     if validationToken is not None:
         return PlainTextResponse(validationToken, headers={"X-Content-Type-Options": "nosniff"})
-    
+
     try:
         notifications = OutlookNotificationList.model_validate(body).value
 
@@ -51,7 +51,6 @@ def outlook_push_notification(
         return Response(status_code=status.HTTP_202_ACCEPTED)
 
     for notification in notifications:
-
         account_id = outlook_pubsub_token.decode(notification.clientState or "")
 
         if account_id is None:
@@ -64,7 +63,6 @@ def outlook_push_notification(
 
         try:
             account = email_account_find_one_by_id(db, account_id)
-  
         except SQLAlchemyError:
             db.rollback()
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Could not look up the email account.")
@@ -78,7 +76,7 @@ def outlook_push_notification(
             continue
 
         try:
-            enqueue_outlook("app.jobs.outlook_sync.sync_outlook_job", queue, account_id, notification.message_id)
+            enqueue_new_outlook("app.jobs.outlook_sync.sync_outlook_job", queue, account_id, notification.message_id)
 
         except RedisError:
             logger.exception("Could not enqueue Outlook sync", extra={"account_id": str(account_id)})

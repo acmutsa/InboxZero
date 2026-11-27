@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, START, END
 
-from app.ai_pipeline.states import EmailState
+from api.app.ai_pipeline.types.states import EmailState
 from app.ai_pipeline.nodes import (
     code_check_node, ai_bin_node, categorize_node, ai_draft_node,
     record_skip, handle_failure, save_draft,

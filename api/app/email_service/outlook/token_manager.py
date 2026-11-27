@@ -24,7 +24,6 @@ DEFAULT_LIFETIME_SECONDS = 3600
 
 
 class OutlookSession(requests.Session):
-
     def __init__(self, token_manager: "OutlookTokenManager") -> None:
         super().__init__()
         self._token_manager = token_manager
@@ -49,7 +48,6 @@ class OutlookSession(requests.Session):
 
 
 class OutlookTokenManager:
-
     _account_id: uuid.UUID | None = None
     _user_id: uuid.UUID | None = None
     _oauth: MicrosoftOAuth | None = None
@@ -126,7 +124,7 @@ class OutlookTokenManager:
     def _save_tokens(self, new_refresh_token: str | None) -> None:
         try:
             with SessionLocal() as db:
-                account = email_account_find_one_by_email_id_and_user_id(db, self._account_id, self._user_id)
+                account = email_account_find_one_by_id(db, self._account_id)
 
                 if account is None or account.token is None:
                     return

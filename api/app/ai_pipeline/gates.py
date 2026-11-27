@@ -1,8 +1,10 @@
 from pydantic import ValidationError
 
 from app.ai_pipeline.settings import pipeline_settings
-from app.ai_pipeline.states import BinValidate,EmailState,DraftValidate
 
+from  app.ai_pipeline.types.bin_validate import BinValidate
+from  app.ai_pipeline.types.draft_validate import DraftValidate
+from  app.ai_pipeline.types.email_state import EmailState
 
 def extract_json(raw_output: str | None) -> str:
     text = (raw_output or "").strip()

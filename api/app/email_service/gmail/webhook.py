@@ -22,7 +22,7 @@ from app.db.session import get_db
 from app.email_service.gmail.types.notification import GmailNotification
 from app.models.pubsub_push_request import PubSubPushRequest
 from app.queue.redis import enqueue_new_gmail
-from app.queue.redis import get_queue
+from app.queue.redis import get_sync_queue
 from app.repositories.email_account import email_account_find_one_by_email
 
 webhook_gmail_router = APIRouter(prefix="/webhooks", tags=["gmail-webhook"])
@@ -37,7 +37,7 @@ def gmail_push_notification(
     body: PubSubPushRequest,
     gmail_pubsub_token: None = Depends(gmail_pubsub_token.decrypt),
     db: Session = Depends(get_db),
-    queue: Queue = Depends(get_queue),
+    queue: Queue = Depends(get_sync_queue),
 ):
     notification = decode_gmail_notification(body)
 

@@ -22,6 +22,7 @@ from app.email_service.outlook.types.message_list import MessageListRequest
 from app.email_service.outlook.types.message import Message
 from app.email_service.outlook.types.message_request import MessageRequest
 from app.email_service.outlook.types.message_modify_request import MessageUpdateRequest
+from app.email_service.outlook.types.message_modify_request import MessageMoveRequest
 
 from app.email_service.outlook.types.draft import DraftList
 from app.email_service.outlook.types.draft import Draft
@@ -39,6 +40,9 @@ from app.email_service.outlook.types.subscription import SubscriptionRenewReques
 BASE_URL = "https://graph.microsoft.com/v1.0"
 MAX_PAGE_SIZE = 50
 
+PREFER_IMMUTABLE_ID = 'IdType="ImmutableId"'
+PREFER_TEXT_BODY = 'outlook.body-content-type="text"'
+
 class OutlookService:
 
     def __init__(self, token_manager: OutlookTokenManager) -> None:
@@ -46,8 +50,8 @@ class OutlookService:
         self._session = token_manager.get_session()
 
     # HTTP
-    def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        return self._request("GET", path, params=params)
+    def _get(self, path: str, params: dict[str, Any] | None = None, prefer: tuple[str, ...] = ()) -> dict[str, Any]:
+        return self._request("GET", path, params=params, prefer=prefer)
 
     def _post(self, path: str, body: dict[str, Any] | None = None, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._request("POST", path, params=params, body=body)
@@ -58,9 +62,13 @@ class OutlookService:
     def _delete(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._request("DELETE", path, params=params)
 
-    def _request(self, method: str, path: str, params: dict[str, Any] | None = None, body: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _request(self, method: str, path: str, params: dict[str, Any] | None = None, body: dict[str, Any] | None = None, prefer: tuple[str, ...] = (), mime: str | None = None) -> dict[str, Any]:
+        headers = {"Accept": "application/json", "Prefer": ", ".join((PREFER_IMMUTABLE_ID, *prefer))}
+        if mime is not None:
+            headers["Content-Type"] = "text/plain" 
+
         try:
-            response = self._session.request(method, BASE_URL + path, headers={"Accept": "application/json"}, params=params, json=body, timeout=self.timeout)
+            response = self._session.request(method, BASE_URL + path, headers=headers, params=params, json=body, data=mime, timeout=self.timeout)
 
         except requests.Timeout as error:
             raise OutlookServiceError("Outlook request timed out.", status_code=504) from error
@@ -111,8 +119,7 @@ class OutlookService:
 
     # Mail folders
     def get_mail_folders(self, parent_folder_id: str | None = None, top: int = 100) -> MailFolderList:
-        path = f"/me/mailFolders/{self._id(parent_folder_id)}/childFolders" if parent_folder_id else "/me/mailFolders"
-        return MailFolderList.model_validate(self._get(path, {"$top": min(MAX_PAGE_SIZE, top)}))
+        return MailFolderList.model_validate(self._get(f"/me/mailFolders/{self._id(parent_folder_id)}/childFolders" if parent_folder_id else "/me/mailFolders", {"$top": top}))
 
     def get_mail_folder(self, folder_id: str = "inbox") -> MailFolder:
         return MailFolder.model_validate(self._get(f"/me/mailFolders/{self._id(folder_id)}"))
@@ -143,10 +150,14 @@ class OutlookService:
         return MessageList.model_validate(self._get("/me/messages", {"$top": min(MAX_PAGE_SIZE, MessageListRequest.top)}))
 
     def get_message(self, MessageRequest: MessageRequest) -> Message:
-        return Message.model_validate(self._get(f"/me/messages/{self._id(MessageRequest.id)}"))
+        return Message.model_validate(self._get(f"/me/messages/{self._id(MessageRequest.id)}",prefer=(PREFER_TEXT_BODY,)))
 
     def update_message(self, messageUpdateRequest: MessageUpdateRequest) -> Message:
         return Message.model_validate(self._patch(f"/me/messages/{self._id(messageUpdateRequest.id)}", body=messageUpdateRequest.model_dump(exclude={"id"}, exclude_none=True)))
+
+
+    def move_message(self, messageMoveRequest: MessageMoveRequest) -> Message:
+        return Message.model_validate(self._post(f"/me/messages/{self._id(messageMoveRequest.id)}/move", body=messageMoveRequest.model_dump(exclude={"id"})))
 
 
     # Threads (Graph has no thread object for mailboxes. A thread is all messages with the same conversationId)
@@ -167,13 +178,11 @@ class OutlookService:
         return draft
 
     def create_draft(self, draftCreateRequest: DraftCreateRequest) -> Draft:
-        return Draft.model_validate(self._post("/me/messages", body=draftCreateRequest.model_dump(exclude_none=True)))
+        return Draft.model_validate(self._request("POST", f"/me/messages/{self._id(draftCreateRequest.id)}/createReply", mime=draftCreateRequest.mime))
 
     def send_draft(self, draft_id: str) -> None:
         self._post(f"/me/messages/{self._id(draft_id)}/send")
 
-
-    # Subscriptions
     def post_subscription(self, subscriptionCreateRequest: SubscriptionCreateRequest) -> Subscription:
         return Subscription.model_validate(self._post("/subscriptions", body=subscriptionCreateRequest.model_dump(mode="json")))
 

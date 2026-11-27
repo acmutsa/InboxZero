@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from app.ai_pipeline.prompt_templates import user_prompt_middleware
-from app.ai_pipeline.user_context import UserContext
+from app.models.user_context import UserContext
 from langchain.agents import create_agent
 from app.config import config
 
